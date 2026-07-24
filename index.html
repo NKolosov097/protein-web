@@ -1,0 +1,886 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTEIN DOCKER — p53 (1TUP)</title>
+<style>
+  :root{
+    --bg:#05060f; --panel:rgba(10,14,30,.72); --line:#1b2550;
+    --cyan:#22e0ff; --green:#39ff14; --red:#ff2e5b; --amber:#ffb000; --violet:#a15bff;
+    --txt:#cfe6ff;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);
+    font-family:"Segoe UI",system-ui,sans-serif;overflow:hidden}
+  #viewer{position:fixed;inset:0;width:100vw;height:100vh}
+  /* neon grid backdrop */
+  body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:
+      radial-gradient(circle at 50% 40%, rgba(33,224,255,.10), transparent 60%),
+      linear-gradient(transparent 95%, rgba(33,224,255,.08) 96%) 0 0/100% 40px,
+      linear-gradient(90deg, transparent 95%, rgba(33,224,255,.08) 96%) 0 0/40px 100%;}
+
+  .panel{position:fixed;z-index:5;background:var(--panel);border:1px solid var(--line);
+    border-radius:14px;backdrop-filter:blur(10px);box-shadow:0 0 24px rgba(33,224,255,.12), inset 0 0 20px rgba(10,20,50,.5)}
+  h1{font-size:15px;letter-spacing:3px;margin:0 0 2px;
+    background:linear-gradient(90deg,var(--cyan),var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{font-size:11px;color:#7f9cc9;letter-spacing:1px}
+
+  /* top-left title */
+  #hdr{top:16px;left:16px;padding:14px 18px}
+
+  /* top-right score */
+  #score{top:16px;right:16px;padding:14px 20px;text-align:right;min-width:190px}
+  #scoreVal{font-size:34px;font-weight:800;color:var(--cyan);text-shadow:0 0 18px var(--cyan);line-height:1}
+  #best{font-size:12px;color:var(--amber);margin-top:4px;letter-spacing:1px}
+
+  /* distance meter bottom-center */
+  #meter{bottom:18px;left:50%;transform:translateX(-50%);padding:12px 20px;width:min(560px,92vw)}
+  .bar{height:14px;border-radius:8px;background:#0a1330;overflow:hidden;border:1px solid var(--line);margin-top:8px}
+  #barFill{height:100%;width:0%;transition:width .12s linear, background .12s linear}
+  .mrow{display:flex;justify-content:space-between;font-size:12px;letter-spacing:1px}
+  #status{font-weight:700}
+
+  /* controls help bottom-left */
+  #help{bottom:18px;left:16px;padding:12px 14px;font-size:11px;line-height:1.7;color:#9db8e0;max-width:210px}
+  #help b{color:var(--cyan)}
+  kbd{background:#0e1738;border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:#dff;font-size:10px}
+
+  /* buttons bottom-right */
+  #actions{bottom:18px;right:16px;padding:12px;display:flex;flex-direction:column;gap:8px}
+  button{cursor:pointer;font-family:inherit;font-weight:700;letter-spacing:1px;color:#001018;
+    border:none;border-radius:10px;padding:11px 16px;font-size:13px;transition:transform .08s, box-shadow .2s}
+  button:active{transform:scale(.96)}
+  .b-dock{background:linear-gradient(90deg,var(--green),#00d4a0);box-shadow:0 0 18px rgba(57,255,20,.5)}
+  .b-ghost{background:#0e1738;color:var(--cyan);border:1px solid var(--line);box-shadow:none}
+
+  /* loading + toast */
+  #load{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;
+    flex-direction:column;gap:14px;background:var(--bg);font-size:14px;letter-spacing:2px;color:var(--cyan)}
+  .spin{width:46px;height:46px;border:3px solid #12224e;border-top-color:var(--cyan);border-radius:50%;
+    animation:sp 1s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  #toast{position:fixed;z-index:30;top:50%;left:50%;transform:translate(-50%,-50%) scale(.7);
+    padding:22px 40px;border-radius:16px;font-size:26px;font-weight:800;letter-spacing:2px;
+    color:#001018;background:linear-gradient(90deg,var(--green),var(--cyan));opacity:0;pointer-events:none;
+    box-shadow:0 0 40px rgba(57,255,20,.7);transition:opacity .3s, transform .3s}
+  #toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+
+  /* onboarding / tutorial */
+  #tut{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;
+    background:rgba(2,4,12,.78);backdrop-filter:blur(4px)}
+  #tut.show{display:flex}
+  #tutCard{width:min(460px,92vw);padding:26px 28px;border-radius:18px;position:relative;
+    background:linear-gradient(160deg,#0b1230,#0a0e22);border:1px solid #2a3a74;
+    box-shadow:0 0 50px rgba(33,224,255,.25),inset 0 0 30px rgba(20,40,90,.5)}
+  #tutIcon{font-size:44px;line-height:1;margin-bottom:10px}
+  #tutTitle{font-size:20px;font-weight:800;margin:0 0 10px;letter-spacing:1px;
+    background:linear-gradient(90deg,var(--cyan),var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent}
+  #tutBody{font-size:14px;line-height:1.65;color:#c7dbff;min-height:96px}
+  #tutBody kbd{background:#0e1738;border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:#dff;font-size:12px}
+  #tutBody .hl{color:var(--green);font-weight:700}
+  #tutBody .hlc{color:var(--cyan);font-weight:700}
+  .tutNav{display:flex;align-items:center;justify-content:space-between;margin-top:22px}
+  .dots{display:flex;gap:7px}
+  .dot{width:8px;height:8px;border-radius:50%;background:#22335f;transition:.2s}
+  .dot.on{background:var(--cyan);box-shadow:0 0 10px var(--cyan);transform:scale(1.25)}
+  .tutBtns{display:flex;gap:8px}
+  #tutSkip{position:absolute;top:14px;right:16px;font-size:12px;color:#6f8bbf;cursor:pointer;letter-spacing:1px}
+  #tutSkip:hover{color:var(--cyan)}
+
+  /* leaderboard */
+  #lb{top:120px;right:16px;padding:12px 16px;width:190px;display:none}
+  #lb h2{font-size:12px;letter-spacing:2px;color:var(--violet);margin:0 0 8px}
+  #lb ol{margin:0;padding-left:20px;font-size:12px;line-height:1.9}
+  #lb li span{float:right;color:var(--cyan)}
+
+  /* study-mode tooltip (HTML overlay, always kept inside the viewport) */
+  #tip{position:fixed;z-index:15;display:none;max-width:min(340px,80vw);
+    padding:10px 13px;border-radius:10px;white-space:pre-line;
+    background:#160a2e;border:1px solid var(--violet);color:#e8ccff;
+    font-size:13px;line-height:1.5;pointer-events:none;
+    box-shadow:0 0 18px rgba(161,91,255,.35)}
+</style>
+
+<div id="viewer"></div>
+
+<div id="load"><div class="spin"></div><div>ЗАГРУЗКА СТРУКТУРЫ p53 · 1TUP…</div></div>
+
+<div id="hdr" class="panel">
+  <h1>PROTEIN&nbsp;DOCKER</h1>
+  <div class="sub">TARGET: p53 · PDB 1TUP · «страж генома»</div>
+</div>
+
+<div id="score" class="panel">
+  <div class="sub">СЧЁТ</div>
+  <div id="scoreVal">0</div>
+  <div id="best">РЕКОРД: 0</div>
+</div>
+
+<div id="lb" class="panel">
+  <h2>◆ ЛИДЕРЫ</h2>
+  <ol id="lbList"></ol>
+</div>
+
+<div id="meter" class="panel">
+  <div class="mrow"><span>КОНТАКТ С КАРМАНОМ</span><span id="status">—</span></div>
+  <div class="bar"><div id="barFill"></div></div>
+  <div class="mrow" style="margin-top:6px;color:#6f8bbf">
+    <span>до цели: <b id="distVal">—</b> Å</span>
+    <span>≤ 5 Å = в кармане</span>
+  </div>
+</div>
+
+<div id="help" class="panel">
+  <div><b>ДВИЖЕНИЕ</b></div>
+  <div><kbd>← ↑ → ↓</kbd> двигать по экрану</div>
+  <div><kbd>W</kbd>/<kbd>S</kbd> ближе / дальше</div>
+  <div style="margin-top:6px"><b>ВРАЩЕНИЕ</b></div>
+  <div><kbd>Q</kbd>/<kbd>E</kbd> · <kbd>A</kbd>/<kbd>D</kbd> · <kbd>Z</kbd>/<kbd>C</kbd></div>
+  <div style="margin-top:6px;color:#6f8bbf">Мышь — вращать · <kbd>Shift</kbd>+мышь — сдвиг</div>
+</div>
+
+<div id="actions" class="panel">
+  <button class="b-dock" id="btnDock">▶ ТЕСТ ЛЕКАРСТВА</button>
+  <button class="b-ghost" id="btnSound">🔇 ЗВУК: ВЫКЛ</button>
+  <button class="b-ghost" id="btnInfo">🔎 ИЗУЧЕНИЕ</button>
+  <button class="b-ghost" id="btnReset">↺ СБРОС</button>
+  <button class="b-ghost" id="btnHelp">❔ КАК ИГРАТЬ</button>
+</div>
+
+<div id="tut">
+  <div id="tutCard">
+    <div id="tutSkip">ПРОПУСТИТЬ ✕</div>
+    <div id="tutIcon">🧬</div>
+    <h2 id="tutTitle"></h2>
+    <div id="tutBody"></div>
+    <div class="tutNav">
+      <div class="dots" id="tutDots"></div>
+      <div class="tutBtns">
+        <button class="b-ghost" id="tutPrev">◀ Назад</button>
+        <button class="b-dock" id="tutNext">Далее ▶</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="tip"></div>
+
+<script src="https://3Dmol.org/build/3Dmol-min.js"></script>
+<script>
+/* ============================================================
+   PROTEIN DOCKER  —  Этап 1 (3D-белок) + Этап 2 (докинг-геймплей)
+   ============================================================ */
+
+const el = id => document.getElementById(id);
+let viewer, proteinAtoms = [], hoverAtoms = [], pocket = null, SURF = null;
+let infoMode = false, hoverInfo = null;   // study mode + current tooltip
+let CHAIN_STATS = {};                      // per-chain summary (residue count, DNA/protein)
+let detailLevel = 'chain';                 // current study detail: 'chain' (far) or 'residue' (close)
+// study-mode zoom threshold: at >= this many screen-pixels per Ångström we consider the
+// view "close" and switch from whole-ribbon view to individual-amino-acid view
+const CLOSE_PXA = 15;
+
+// ligand state (the small "drug" molecule)
+const lig = { x:0, y:0, z:35, rx:0, ry:0, rz:0 };
+// local coordinates of the ligand atoms (a simple molecule ~ benzene ring + tail)
+const LIG_LOCAL = [
+  {x: 0.0, y: 1.4, z:0, c:'#22e0ff'},
+  {x: 1.2, y: 0.7, z:0, c:'#22e0ff'},
+  {x: 1.2, y:-0.7, z:0, c:'#22e0ff'},
+  {x: 0.0, y:-1.4, z:0, c:'#a15bff'},
+  {x:-1.2, y:-0.7, z:0, c:'#22e0ff'},
+  {x:-1.2, y: 0.7, z:0, c:'#22e0ff'},
+  {x: 0.0, y: 2.9, z:0, c:'#39ff14'},   // "active group"
+];
+
+let score = 0, best = 0, breath = 0;
+
+// standard residues — everything else (except water) is treated as hetero (ion / small molecule)
+const AA_RESN = new Set('ALA ARG ASN ASP CYS GLN GLU GLY HIS ILE LEU LYS MET PHE PRO SER THR TRP TYR VAL MSE SEC'.split(' '));
+const DNA_RESN = ['DA','DC','DG','DT','A','C','G','T','U','DU'];
+
+/* ---------- 3Dmol init + protein loading ---------- */
+function init(){
+  viewer = $3Dmol.createViewer("viewer", { backgroundColor:0x05060f });
+
+  $3Dmol.download("pdb:1TUP", viewer, {}, function(model){
+    // STAGE 1: nice translucent surface + cartoon structure
+    viewer.setStyle({}, { cartoon:{ color:'spectrum' } });
+    addProteinSurface(0.55);
+
+    // zinc / hetero atoms — as neon spheres
+    viewer.setStyle({ hetflag:true }, { sphere:{ scale:0.4, color:'magenta' } });
+
+    // collect protein atom coordinates for distance calculations
+    const atoms = model.selectedAtoms({});
+    proteinAtoms = atoms.map(a => {
+      const rn=(a.resn||'').toUpperCase();
+      const het = a.hetflag || !(AA_RESN.has(rn) || DNA_RESN.includes(rn));
+      return {x:a.x, y:a.y, z:a.z, resn:a.resn, resi:a.resi, chain:a.chain, elem:a.elem,
+        het, ion: het && rn!=='HOH'};   // ion = hetero but not water
+    });
+    hoverAtoms = proteinAtoms;           // hovering is allowed on everything, including water
+    buildChainStats();                   // per-chain residue counts for the "whole ribbon" tooltip
+
+    // target "pocket" = zinc ion (a real functional site of p53).
+    // If it is absent, fall back to the protein centroid.
+    const zn = atoms.find(a => (a.elem||'').toUpperCase()==='ZN' || (a.resn||'').toUpperCase()==='ZN');
+    pocket = zn ? {x:zn.x, y:zn.y, z:zn.z} : centroid(proteinAtoms);
+
+    // ligand starts outside so the player guides it toward the target
+    lig.x = pocket.x + 26; lig.y = pocket.y + 14; lig.z = pocket.z + 22;
+
+    viewer.zoomTo();
+    viewer.zoom(0.9);
+    viewer.render();
+
+    el('load').style.display='none';
+    loadLeaderboard();
+    animate();               // loop: ligand "breathing" + recompute
+    maybeTutorial();         // show the tutorial on first visit
+  }, function(err){
+    el('load').innerHTML = '⚠ Не удалось загрузить 1TUP из PDB.<br>Проверьте интернет и обновите страницу.';
+  });
+}
+
+/* ---------- geometry ---------- */
+function centroid(arr){
+  let s={x:0,y:0,z:0}; arr.forEach(p=>{s.x+=p.x;s.y+=p.y;s.z+=p.z});
+  const n=arr.length||1; return {x:s.x/n,y:s.y/n,z:s.z/n};
+}
+// rotate a point by Euler angles and translate to the ligand position
+function ligWorld(p, t=0){
+  const bx = p.x*(1+0.05*Math.sin(t)), by=p.y*(1+0.05*Math.sin(t)); // "breathing"
+  let {x,y,z}=rot(bx,by,p.z,lig.rx,lig.ry,lig.rz);
+  return {x:x+lig.x, y:y+lig.y, z:z+lig.z};
+}
+function rot(x,y,z,rx,ry,rz){
+  let c,s;
+  c=Math.cos(rx);s=Math.sin(rx); [y,z]=[y*c-z*s, y*s+z*c];
+  c=Math.cos(ry);s=Math.sin(ry); [x,z]=[x*c+z*s,-x*s+z*c];
+  c=Math.cos(rz);s=Math.sin(rz); [x,y]=[x*c-y*s, x*s+y*c];
+  return {x,y,z};
+}
+function dist(a,b){const dx=a.x-b.x,dy=a.y-b.y,dz=a.z-b.z;return Math.sqrt(dx*dx+dy*dy+dz*dz)}
+function norm(v){const m=Math.hypot(v[0],v[1],v[2])||1;return [v[0]/m,v[1]/m,v[2]/m];}
+function cross(a,b){return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];}
+// camera basis in world coordinates (right/up/forward) — for "screen-relative" movement
+function camBasis(){
+  try{
+    const R=viewer.screenOffsetToModel(1,0), D=viewer.screenOffsetToModel(0,1);
+    const right=norm([R.x,R.y,R.z]);
+    const up=norm([-D.x,-D.y,-D.z]);      // screen "up" = minus "down"
+    const fwd=norm(cross(right,up));      // perpendicular to the screen plane
+    if(right.some(Number.isNaN)||up.some(Number.isNaN)) throw 0;
+    return {right,up,fwd};
+  }catch(e){ return {right:[1,0,0],up:[0,1,0],fwd:[0,0,1]}; }  // fallback: world axes
+}
+
+// distance from the ligand centre to the target pocket (zinc site)
+function minDistance(t=0){
+  const world = LIG_LOCAL.map(p=>ligWorld(p,t));
+  const center = centroid(world);
+  const mind = pocket ? dist(center, pocket) : 1e9;
+  return {mind, world, center};
+}
+
+/* ---------- persistent labels (created once, refreshed only on movement) ---------- */
+// Recreating labels every animation frame made them flicker/"jump", so we cache them
+// and only rebuild the ligand label when the molecule actually moves.
+let targetLabel=null, ligLabel=null, lastLigLabelPos='';
+function syncLabels(){
+  // target ("◎ ЦЕЛЬ: КАРМАН") — static, so create it a single time
+  if(!targetLabel){
+    targetLabel = viewer.addLabel("◎ ЦЕЛЬ: КАРМАН (Zn)", {
+      position:{x:pocket.x, y:pocket.y+12, z:pocket.z},
+      backgroundColor:'#04220a', backgroundOpacity:0.75,
+      fontColor:'#39ff14', fontSize:12, borderThickness:1.4, borderColor:'#39ff14',
+      inFront:true, alignment:'bottomCenter'
+    });
+  }
+  // ligand ("🔹 ТВОЁ ЛЕКАРСТВО") — follows the molecule, so rebuild only when it moved
+  const key = lig.x+','+lig.y+','+lig.z;
+  if(key!==lastLigLabelPos){
+    if(ligLabel) viewer.removeLabel(ligLabel);
+    ligLabel = viewer.addLabel("🔹 ТВОЁ ЛЕКАРСТВО", {
+      position:{x:lig.x, y:lig.y+4.5, z:lig.z},
+      backgroundColor:'#0a1330', backgroundOpacity:0.72,
+      fontColor:'#22e0ff', fontSize:12, borderThickness:1.4, borderColor:'#22e0ff',
+      inFront:true, alignment:'bottomCenter'
+    });
+    lastLigLabelPos = key;
+  }
+}
+// forget cached labels after they are wiped externally (e.g. study mode clears all labels)
+function resetLabels(){ targetLabel=null; ligLabel=null; lastLigLabelPos=''; }
+
+/* ---------- draw ligand + force lines ---------- */
+function draw(t=0){
+  // STUDY MODE: the study code manages highlights (setStyle) and its own HTML tooltip,
+  // and renders on demand — so we stop the gameplay animation entirely here (no per-frame
+  // re-render of the heavy stick view, no ligand shapes).
+  if(infoMode) return;
+
+  viewer.removeAllShapes();
+  // NOTE: labels are NOT cleared here — they are managed by syncLabels() below so they
+  // are not destroyed/recreated every frame (that caused the labels to flicker/"jump").
+
+  const {mind, world, center} = minDistance(t);
+  const {color, status, pct} = quality(mind);
+  const inPocket = mind <= 5;
+
+  // ---- TARGET MARKER: pulsing pocket (zinc site) ----
+  const pulse = 2.4 + 0.5*Math.sin(t*1.5);
+  viewer.addSphere({center:pocket, radius:pulse, color:'#39ff14', opacity:0.22});
+  viewer.addSphere({center:pocket, radius:0.9, color:'#39ff14', opacity:0.9});
+  // arrow pointing into the pocket from above
+  viewer.addArrow({
+    start:{x:pocket.x, y:pocket.y+11, z:pocket.z},
+    end:{x:pocket.x, y:pocket.y+3.2, z:pocket.z},
+    radius:0.55, color:'#39ff14', radiusRatio:2.2
+  });
+  // target + ligand labels — created once and refreshed only on movement (see syncLabels)
+  syncLabels();
+
+  // ligand atoms — spheres with glow (brighter inside the pocket)
+  const glow = inPocket ? 0.55 : 0.42;
+  world.forEach((w,i)=>{
+    viewer.addSphere({center:w, radius:glow, color:LIG_LOCAL[i].c});
+    if(inPocket) viewer.addSphere({center:w, radius:glow+0.25, color:'#39ff14', opacity:0.25});
+  });
+  // bonds within the ligand
+  for(let i=0;i<6;i++){
+    viewer.addCylinder({start:world[i], end:world[(i+1)%6], radius:0.12, color:'#4de3ff'});
+  }
+  viewer.addCylinder({start:world[0], end:world[6], radius:0.12, color:'#39ff14'});
+
+  // guide line: from molecule to target, colour by distance
+  viewer.addCylinder({
+    start:center, end:pocket, radius:0.08,
+    color, dashed:true, fromCap:1, toCap:1
+  });
+
+  // HUD
+  el('barFill').style.width = pct+'%';
+  el('barFill').style.background = color;
+  el('barFill').style.boxShadow = '0 0 14px '+color;
+  el('status').textContent = status;
+  el('status').style.color = color;
+  el('distVal').textContent = mind<900 ? mind.toFixed(2) : '—';
+
+  // sound — a short pleasant blip only when entering the pocket (no drone)
+  zoneSound(mind);
+
+  viewer.render();
+  return mind;
+}
+
+// map distance-to-pocket → colour / status / meter fill
+function quality(d){
+  if(d>20)  return {color:'#ff2e5b', status:'ДАЛЕКО',         pct:6};
+  if(d>10)  return {color:'#ffb000', status:'ПОДБИРАЕМСЯ…',   pct:38};
+  if(d>5)   return {color:'#ffe600', status:'БЛИЗКО',         pct:68};
+  return          {color:'#39ff14', status:'★ В КАРМАНЕ!',    pct:100};
+}
+
+/* ---------- animation loop ("living", breathing molecule) ---------- */
+let raf;
+function animate(){
+  breath += 0.06;
+  draw(breath);
+  raf = requestAnimationFrame(()=>setTimeout(animate, 45)); // ~20 fps
+}
+
+/* ---------- keyboard controls ---------- */
+const STEP=1.2, ROT=0.15;
+// movement is RELATIVE to the camera (goes where you look); e.code → any keyboard layout
+window.addEventListener('keydown', e=>{
+  const b=camBasis();
+  const mv=(v,s)=>{ lig.x+=v[0]*STEP*s; lig.y+=v[1]*STEP*s; lig.z+=v[2]*STEP*s; };
+  let ok=true;
+  switch(e.code){
+    case 'ArrowRight': mv(b.right, 1); break;   // right on screen
+    case 'ArrowLeft':  mv(b.right,-1); break;   // left
+    case 'ArrowUp':    mv(b.up,    1); break;   // up
+    case 'ArrowDown':  mv(b.up,   -1); break;   // down
+    case 'KeyW':       mv(b.fwd,  -1); break;   // into the screen (away from camera)
+    case 'KeyS':       mv(b.fwd,   1); break;   // toward the viewer
+    case 'KeyQ': lig.rx+=ROT; break;
+    case 'KeyE': lig.rx-=ROT; break;
+    case 'KeyA': lig.ry+=ROT; break;
+    case 'KeyD': lig.ry-=ROT; break;
+    case 'KeyZ': lig.rz+=ROT; break;
+    case 'KeyC': lig.rz-=ROT; break;
+    default: ok=false;
+  }
+  if(ok) e.preventDefault();
+});
+
+// 3D anchor point under the cursor: the atom whose projection is nearest to it.
+// Returns null when the cursor is over empty space (too far from any atom).
+function anchorFor(mx, my){
+  if(!proteinAtoms.length) return null;
+  const scr = viewer.modelToScreen(proteinAtoms);
+  let best=-1, bd=Infinity;
+  for(let i=0;i<scr.length;i++){
+    const dx=scr[i].x-mx, dy=scr[i].y-my, d=dx*dx+dy*dy;
+    if(d<bd){ bd=d; best=i; }
+  }
+  if(best<0 || bd > 300*300) return null;
+  const a=proteinAtoms[best];
+  return {x:a.x, y:a.y, z:a.z};
+}
+// mouse wheel — intuitive zoom (up = zoom in), TOWARD THE CURSOR. Intercepted before 3Dmol.
+// 3Dmol's zoom() scales about the view centre (and non-linearly, since the camera is
+// perspective), so instead of predicting the shift we MEASURE it: remember the anchor's
+// screen position, zoom, then translate the scene so the anchor lands back where it was.
+window.addEventListener('wheel', e=>{
+  if(!viewer || !el('viewer').contains(e.target)) return;
+  e.preventDefault(); e.stopPropagation();
+  const f = e.deltaY < 0 ? 1.15 : 0.87;
+  const r = el('viewer').getBoundingClientRect();
+  const anchor = anchorFor(e.clientX - r.left, e.clientY - r.top);
+  const before = anchor ? viewer.modelToScreen([anchor])[0] : null;
+  viewer.zoom(f, 0);                             // instant, so the measured translate stays accurate
+  if(before){
+    const after = viewer.modelToScreen([anchor])[0];
+    // pin the anchor in place; translate's Y is screen-inverted, so negate the Y delta
+    viewer.translate(before.x - after.x, after.y - before.y, 0);
+  }
+  // in study mode, switch between ribbon-view and amino-acid-view when the zoom crosses over
+  if(infoMode) updateDetailLevel();
+}, {passive:false, capture:true});
+
+// Shift + mouse drag = pan the camera (like in Blender).
+// Intercept the event before 3Dmol so it pans instead of rotating.
+let panning=false, lastPX=0, lastPY=0;
+window.addEventListener('mousedown', e=>{
+  if(viewer && e.shiftKey && e.button===0 && el('viewer').contains(e.target)){
+    panning=true; lastPX=e.clientX; lastPY=e.clientY;
+    if(infoMode){ hoverInfo=null; hideTip(); }
+    e.preventDefault(); e.stopPropagation();
+  }
+}, true);
+window.addEventListener('mousemove', e=>{
+  if(!panning) return;
+  const dx=e.clientX-lastPX, dy=e.clientY-lastPY;
+  lastPX=e.clientX; lastPY=e.clientY;
+  viewer.translate(dx, -dy, 0);   // 3Dmol's translate Y is screen-inverted → negate dy
+  e.preventDefault(); e.stopPropagation();
+}, true);
+window.addEventListener('mouseup', e=>{ if(panning){ panning=false; e.stopPropagation(); } }, true);
+
+/* ---------- STUDY MODE: what each part does ---------- */
+// "hotspots" (frequent cancer mutations) and functional residues of p53
+const HOTSPOTS = {
+  175:'Arg175 — САМАЯ частая раковая мутация p53. Держит укладку домена у цинка.',
+  176:'Cys176 — удерживает ион цинка (структурный центр).',
+  179:'His179 — координирует цинк.',
+  238:'Cys238 — координирует цинк.',
+  242:'Cys242 — координирует цинк.',
+  245:'Gly245 — горячая точка мутаций, критична для укладки белка.',
+  248:'Arg248 — НАПРЯМУЮ читает ДНК в большой бороздке. Частая мутация в раке.',
+  249:'Arg249 — структурная горячая точка (часто мутирует при раке печени).',
+  273:'Arg273 — ключевой контакт с остовом ДНК. Одна из главных раковых мутаций.',
+  282:'Arg282 — стабилизирует ДНК-связывающую поверхность.',
+};
+// summarise each polymer chain once (how many residues / nucleotides it has)
+function buildChainStats(){
+  CHAIN_STATS = {};
+  proteinAtoms.forEach(a=>{
+    if(a.het) return;                                  // only protein / DNA chains
+    const c = a.chain || '?';
+    const rn = (a.resn||'').toUpperCase();
+    if(!CHAIN_STATS[c]) CHAIN_STATS[c] = {dna:DNA_RESN.includes(rn), res:new Set()};
+    CHAIN_STATS[c].res.add(a.resi);
+  });
+}
+// tooltip text. mode='chain' → describe the whole ribbon; mode='residue' → describe one unit.
+function annotate(a, mode){
+  const resn=(a.resn||'').toUpperCase(), resi=a.resi, chain=a.chain||'?';
+  const elem=(a.elem||'').toUpperCase();
+  if(elem==='ZN' || resn==='ZN')
+    return '🎯 ИОН ЦИНКА (Zn²⁺)\nСтруктурная опора ядра p53 — наша мишень для стыковки.';
+  if(resn==='HOH' || resn==='WAT')
+    return '💧 Молекула воды\nЧасть кристаллической структуры, а не самого белка.';
+  if(a.het)
+    return `🔶 ${resn} · цепь ${chain}\nИон или малая молекула, связанная со структурой.`;
+  const n = CHAIN_STATS[chain] ? CHAIN_STATS[chain].res.size : '?';
+
+  if(DNA_RESN.includes(resn)){
+    if(mode==='chain')
+      return `🧬 ДНК · цепь ${chain}\nНить из ${n} нуклеотидов. p53 садится на ДНК и включает\nгены-защитники (p21 и др.), останавливающие рост опухоли.\n🔍 Приблизься, чтобы навести на отдельный нуклеотид.`;
+    return `🧬 Нуклеотид ${resn}${resi} · цепь ${chain}\nОтдельное звено нити ДНК, с которой контактирует p53.`;
+  }
+
+  if(mode==='chain')
+    return `🔷 Цепь ${chain} — белок p53\nЛента из ${n} аминокислот ДНК-связывающего домена.\n🔍 Приблизься, чтобы навести на отдельную аминокислоту.`;
+  let s = `🔷 ${resn}${resi} · цепь ${chain}`;
+  s += HOTSPOTS[resi] ? '\n★ '+HOTSPOTS[resi] : '\nАминокислота ДНК-связывающего домена p53.';
+  return s;
+}
+let curHi=null, prevHi=null, focused=false;
+// (Re)build the VDW surface at a given opacity. Recreating it is the only reliable way
+// to change its transparency — setSurfaceMaterialStyle often has no visible effect.
+function addProteinSurface(op){
+  const surfP = viewer.addSurface($3Dmol.SurfaceType.VDW,
+    {opacity:op, colorscheme:'cyanCarbon'}, {hetflag:false});
+  Promise.resolve(surfP).then(ret=>{
+    SURF = (ret && typeof ret==='object' && 'surfid' in ret) ? ret.surfid : ret;
+  }).catch(()=>{});
+}
+function removeProteinSurface(){
+  try{ viewer.removeAllSurfaces(); }catch(e){}
+  SURF = null;
+}
+const DIM = 0.7;   // opacity of everything except the hovered object (lower = darker)
+// Base study look at a given opacity. Far ('chain') = smooth ribbons; close ('residue') =
+// ribbon + sticks so the chain visibly consists of individual amino acids / nucleotides.
+function paintScene(op){
+  if(detailLevel==='residue'){
+    // ribbon + thin sticks: you can see each amino acid that builds the chain
+    viewer.setStyle({}, {cartoon:{color:'spectrum', opacity:op}, stick:{color:'spectrum', radius:0.12, opacity:op}});
+    viewer.setStyle({resn:DNA_RESN}, {cartoon:{color:'#00e5ff', opacity:op}, stick:{colorscheme:'cyanCarbon', radius:0.16, opacity:op}});
+  } else {
+    viewer.setStyle({}, {cartoon:{color:'spectrum', opacity:op}});
+    viewer.setStyle({resn:DNA_RESN}, {cartoon:{color:'#00e5ff', opacity:op}, stick:{colorscheme:'cyanCarbon', radius:0.28, opacity:op}});
+  }
+  viewer.setStyle({hetflag:true}, {sphere:{scale:0.4, color:'magenta', opacity: op<1 ? op : 0.9}});
+}
+// Study mode base (nothing hovered): the whole structure stays fully visible.
+// The surface is removed entirely so nothing hides the chains inside.
+function brightScene(){ paintScene(1); viewer.render(); }
+// While hovering: dim the rest of the scene so the highlighted object stands out but
+// everything else stays clearly visible (so you can see what the tooltip points at).
+function focusDim(){ paintScene(DIM); }
+// pick chain/residue detail from the current zoom
+function currentLevel(){ return pxPerA() < CLOSE_PXA ? 'chain' : 'residue'; }
+// entry point when study mode is switched on — drop the surface, then show everything bright
+function dimAll(){ curHi=null; prevHi=null; focused=false; removeProteinSurface(); detailLevel=currentLevel(); brightScene(); }
+// re-evaluate detail when the zoom changes; rebuild the base scene if it flipped
+function updateDetailLevel(){
+  if(!infoMode) return;
+  const lvl=currentLevel();
+  if(lvl===detailLevel) return;
+  detailLevel=lvl; prevHi=null; curHi=null;
+  if(focused) focusDim(); else paintScene(1);
+  viewer.render();
+}
+// restore the normal (gameplay) look when study mode is switched off
+function restoreNormal(){
+  viewer.setStyle({}, {cartoon:{color:'spectrum'}});
+  viewer.setStyle({resn:DNA_RESN}, {cartoon:{color:'spectrum'}});
+  viewer.setStyle({hetflag:true}, {sphere:{scale:0.4, color:'magenta'}});
+  removeProteinSurface();
+  addProteinSurface(0.55);
+  curHi=null; prevHi=null; focused=false;
+  viewer.render();
+}
+// style to apply to the hovered object: `bright` = emphasised, `dim` = faded back into
+// the dimmed scene. Highlighting KEEPS the object's real colour — we only raise its opacity
+// to full and add sticks; we never repaint it. mode: 'chain' = whole ribbon, 'residue' = one unit.
+function styleFor(a, mode){
+  const resn=(a.resn||'').toUpperCase(), elem=(a.elem||'').toUpperCase();
+  const isWater = resn==='HOH' || resn==='WAT';
+  // ions / water / small molecules — same magenta sphere as normal, just larger when hovered
+  if(a.het || elem==='ZN' || resn==='ZN')
+    return {key:'H_'+a.chain+'_'+a.resi+'_'+resn,
+      sel:{resn:a.resn, resi:a.resi, chain:a.chain},
+      bright:{sphere:{scale:isWater?0.6:0.85, color:'magenta', opacity:1}},
+      dim:{sphere:{scale:0.4, color:'magenta', opacity:DIM}}};
+  // DNA — keeps its real cyan colour; far = whole strand, close = one nucleotide.
+  // `dim` mirrors the base look at this zoom so un-highlighting blends back in seamlessly.
+  if(DNA_RESN.includes(resn)){
+    if(mode==='chain')
+      return {key:'Dc_'+a.chain, sel:{chain:a.chain},
+        bright:{cartoon:{color:'#00e5ff', opacity:1}, stick:{colorscheme:'cyanCarbon', radius:0.4}},
+        dim:{cartoon:{color:'#00e5ff', opacity:DIM}, stick:{colorscheme:'cyanCarbon', radius:0.28, opacity:DIM}}};
+    return {key:'Dr_'+a.chain+'_'+a.resi, sel:{chain:a.chain, resi:a.resi},
+      bright:{cartoon:{color:'#00e5ff', opacity:1}, stick:{colorscheme:'cyanCarbon', radius:0.4}},
+      dim:{cartoon:{color:'#00e5ff', opacity:DIM}, stick:{colorscheme:'cyanCarbon', radius:0.16, opacity:DIM}}};
+  }
+  // protein — keeps its real spectrum colour; far = whole chain, close = one residue
+  if(mode==='chain')
+    return {key:'Pc_'+a.chain, sel:{chain:a.chain},
+      bright:{cartoon:{color:'spectrum', opacity:1}},
+      dim:{cartoon:{color:'spectrum', opacity:DIM}}};
+  return {key:'Pr_'+a.chain+'_'+a.resi, sel:{chain:a.chain, resi:a.resi},
+    bright:{cartoon:{color:'spectrum', opacity:1}, stick:{color:'spectrum', radius:0.35}},
+    dim:{cartoon:{color:'spectrum', opacity:DIM}, stick:{color:'spectrum', radius:0.12, opacity:DIM}}};
+}
+// highlight the hovered object; on first hover dim the whole scene, then fade the previous one back
+function highlight(a, mode){
+  const s=styleFor(a, mode);
+  if(s.key===curHi) return;
+  if(!focused){ focusDim(); focused=true; }
+  if(prevHi) viewer.setStyle(prevHi.sel, prevHi.dim);
+  viewer.setStyle(s.sel, s.bright);
+  prevHi=s; curHi=s.key;
+  viewer.render();
+}
+// cursor left every object → restore the full-brightness base
+function clearHi(){
+  if(focused || prevHi){ prevHi=null; curHi=null; focused=false; brightScene(); }
+}
+
+function setInfoMode(on){
+  infoMode=on; hoverInfo=null;
+  el('btnInfo').textContent = on ? '🔎 ИЗУЧЕНИЕ: ВКЛ' : '🔎 ИЗУЧЕНИЕ';
+  el('btnInfo').classList.toggle('b-dock', on);
+  el('btnInfo').classList.toggle('b-ghost', !on);
+  el('viewer').style.cursor = on ? 'crosshair' : '';
+  if(on){
+    viewer.removeAllShapes(); viewer.removeAllLabels();  // clear leftover gameplay ligand/target
+    resetLabels();  // labels were wiped — drop cached refs so draw() recreates them on exit
+    dimAll();
+  } else {
+    restoreNormal(); hideTip();
+  }
+  showToast(on ? '🔎 Наведи курсор на белок, цинк или ДНК' : 'Режим изучения выключен');
+}
+el('btnInfo').onclick = ()=> setInfoMode(!infoMode);
+
+// custom nearest-atom picking under the cursor (via 3D→screen projection).
+// PRIMARY criterion is proximity to the cursor on screen, so we always highlight the
+// object the cursor is actually over. Depth (distance to the camera) is used only as a
+// TIE-BREAKER between atoms that overlap the cursor — then the front-most one wins.
+// (This avoids the old bug where a far-but-frontmost atom, e.g. a residue from another
+//  chain, hijacked the tooltip instead of the ribbon right under the cursor.)
+function pickAtom(mx, my){
+  if(!hoverAtoms.length){ hoverInfo=null; return; }
+  const scr = viewer.modelToScreen(hoverAtoms);   // list of {x,y} in canvas pixels
+  const f = camBasis().fwd;                         // view axis; larger dot = closer to the camera
+  const RAD = 15;                                   // px: how close to the cursor an atom must be
+  const ION = 22;                                   // px: ions get a slightly larger, priority radius
+  const TIE = 4;                                    // px: atoms within this of the closest "overlap"
+
+  const dists = new Array(scr.length);
+  let dmin = Infinity, ionBest = -1, ionMin = Infinity;
+  for(let i=0;i<scr.length;i++){
+    const dx=scr[i].x-mx, dy=scr[i].y-my;
+    const d = Math.sqrt(dx*dx+dy*dy);
+    dists[i] = d;
+    if(d < dmin) dmin = d;
+    const a = hoverAtoms[i];
+    if(a.ion && d<ION && d<ionMin){ ionMin=d; ionBest=i; } // nearest ion under the cursor
+  }
+
+  let idx = -1;
+  if(ionBest>=0){                                   // an ion under the cursor always wins
+    idx = ionBest;
+  } else if(dmin < RAD){
+    // among the atoms that overlap the cursor (within TIE px of the closest one),
+    // pick the front-most so we highlight the ribbon on top rather than one behind it
+    let bestDepth = -Infinity;
+    for(let i=0;i<scr.length;i++){
+      if(dists[i] <= dmin + TIE){
+        const a = hoverAtoms[i];
+        const depth = a.x*f[0]+a.y*f[1]+a.z*f[2];
+        if(depth > bestDepth){ bestDepth=depth; idx=i; }
+      }
+    }
+  }
+
+  if(idx>=0){
+    const a=hoverAtoms[idx];
+    updateDetailLevel();     // keep the base scene in sync with the current zoom
+    // far away → highlight the whole ribbon; zoomed in → highlight the single residue
+    const mode = a.het ? 'chain' : detailLevel;
+    hoverInfo={pos:{x:a.x,y:a.y,z:a.z}, text:annotate(a, mode)};
+    highlight(a, mode);
+  } else { hoverInfo=null; clearHi(); }
+}
+// screen-pixels per Ångström at the current zoom (measured along the camera's right axis,
+// which always projects fully) — used to decide "far" (ribbon) vs "close" (residue)
+function pxPerA(){
+  if(!pocket) return 0;
+  const b=camBasis();
+  const p0={x:pocket.x, y:pocket.y, z:pocket.z};
+  const p1={x:pocket.x+b.right[0]*10, y:pocket.y+b.right[1]*10, z:pocket.z+b.right[2]*10};
+  const s=viewer.modelToScreen([p0,p1]);
+  return Math.hypot(s[1].x-s[0].x, s[1].y-s[0].y)/10;
+}
+// HTML tooltip that is always clamped inside the viewport, so long multi-line text is never
+// cut off at a screen edge (unlike a 3D label anchored to the atom).
+function showTip(text, cx, cy){
+  const t=el('tip');
+  t.textContent=text;
+  t.style.display='block';
+  const pad=10, w=t.offsetWidth, h=t.offsetHeight;
+  let x=cx+16, y=cy+16;
+  if(x+w+pad > window.innerWidth)  x = cx - w - 16;   // no room on the right → flip left of cursor
+  if(x < pad) x = pad;
+  if(y+h+pad > window.innerHeight) y = cy - h - 16;   // no room below → flip above the cursor
+  if(y < pad) y = pad;
+  t.style.left = x+'px';
+  t.style.top  = y+'px';
+}
+function hideTip(){ el('tip').style.display='none'; }
+
+let lastHoverT=0;
+el('viewer').addEventListener('mousemove', e=>{
+  if(!infoMode || panning) return;
+  const t=performance.now();
+  if(t-lastHoverT < 40) return;    // throttle ~25 times/sec
+  lastHoverT=t;
+  const r=el('viewer').getBoundingClientRect();
+  pickAtom(e.clientX-r.left, e.clientY-r.top);
+  if(hoverInfo) showTip(hoverInfo.text, e.clientX, e.clientY); else hideTip();
+});
+el('viewer').addEventListener('mouseleave', ()=>{ hoverInfo=null; clearHi(); hideTip(); });
+
+/* ---------- "DRUG TEST" → score calculation ---------- */
+const API = 'http://localhost:8000/dock';
+// fallback in-browser calculation if the server is down: closer to the pocket → better
+function localAffinity(d){ return Math.max(-11, Math.min(-1, -11 + d*0.38)); }
+
+el('btnDock').onclick = async ()=>{
+  const {mind, world} = minDistance(0);
+  const btn=el('btnDock'), old=btn.textContent;
+  btn.disabled=true; btn.textContent='⏳ СЧИТАЕМ…';
+
+  let affinity, source='браузер';
+  try{
+    const res = await fetch(API, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        ligand: world.map(w=>({x:w.x, y:w.y, z:w.z})),
+        center: [pocket.x, pocket.y, pocket.z]
+      })
+    });
+    if(!res.ok) throw 0;
+    affinity = (await res.json()).affinity;
+    source = 'Python-сервер';
+  }catch(e){
+    affinity = localAffinity(mind);   // server is down — compute locally
+  }
+  const pts = Math.round(-affinity*1000);
+  btn.disabled=false; btn.textContent=old;
+
+  score = pts;
+  el('scoreVal').textContent = score.toLocaleString('ru-RU');
+
+  if(pts>best){
+    best=pts; el('best').textContent='РЕКОРД: '+best.toLocaleString('ru-RU');
+    fireworks(); chimeWin();
+    showToast(`★ РЕКОРД!  ${affinity.toFixed(1)} ккал/моль · ${source}`);
+    saveScore(pts);
+  } else {
+    showToast(`${affinity.toFixed(1)} ккал/моль · ${pts.toLocaleString('ru-RU')} очков · ${source}`);
+  }
+};
+
+el('btnReset').onclick = ()=>{
+  lig.x=pocket.x+26; lig.y=pocket.y+14; lig.z=pocket.z+22;
+  lig.rx=lig.ry=lig.rz=0; score=0; el('scoreVal').textContent='0';
+};
+
+/* ---------- toast + fireworks ---------- */
+function showToast(msg){
+  const t=el('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),1800);
+}
+function fireworks(){
+  const cols=['#39ff14','#22e0ff','#a15bff','#ffb000','#ff2e5b'];
+  for(let i=0;i<60;i++){
+    const s=document.createElement('div');
+    const a=Math.random()*Math.PI*2, v=120+Math.random()*220;
+    s.style.cssText=`position:fixed;z-index:40;left:50%;top:50%;width:7px;height:7px;border-radius:50%;
+      pointer-events:none;background:${cols[i%cols.length]};box-shadow:0 0 10px currentColor`;
+    document.body.appendChild(s);
+    const dx=Math.cos(a)*v, dy=Math.sin(a)*v;
+    s.animate([{transform:'translate(0,0)',opacity:1},
+               {transform:`translate(${dx}px,${dy}px)`,opacity:0}],
+              {duration:900+Math.random()*500,easing:'cubic-bezier(.1,.7,.3,1)'})
+     .onfinish=()=>s.remove();
+  }
+}
+
+/* ---------- sound (WebAudio) — short pleasant blips, no drone ---------- */
+let actx, soundOn=false;   // sound OFF by default (toggled with the button)
+function initAudio(){
+  if(actx) return;
+  actx=new (window.AudioContext||window.webkitAudioContext)();
+}
+// a single short tone with a soft envelope
+function blip(freq, dur=0.14, type='sine', vol=0.14){
+  if(!soundOn||!actx) return;
+  const o=actx.createOscillator(), g=actx.createGain();
+  o.type=type; o.frequency.value=freq;
+  o.connect(g); g.connect(actx.destination);
+  const t=actx.currentTime;
+  g.gain.setValueAtTime(0,t);
+  g.gain.linearRampToValueAtTime(vol,t+0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.start(t); o.stop(t+dur+0.02);
+}
+// "ding" on entering the pocket — fires once per boundary crossing
+let wasInPocket=false;
+function zoneSound(d){
+  const now = d<=5;
+  if(now && !wasInPocket){ blip(880,0.12); setTimeout(()=>blip(1320,0.16),90); } // pleasant two-note chord
+  wasInPocket = now;
+}
+// cheerful arpeggio on a new record
+function chimeWin(){ [523,659,784,1047].forEach((f,i)=>setTimeout(()=>blip(f,0.18,'triangle',0.16),i*90)); }
+el('btnSound').onclick = ()=>{
+  soundOn=!soundOn; initAudio();
+  el('btnSound').textContent = soundOn?'🔊 ЗВУК: ВКЛ':'🔇 ЗВУК: ВЫКЛ';
+};
+// unlock audio on first click (browser autoplay policy)
+window.addEventListener('click', initAudio, {once:true});
+
+/* ---------- local leaderboard (mini Stage 4) ---------- */
+function getBoard(){ try{return JSON.parse(localStorage.getItem('pd_board')||'[]')}catch{return[]} }
+function saveScore(pts){
+  let name = prompt('РЕКОРД! Введите ник для таблицы лидеров:', 'ИГРОК');
+  if(!name) name='ИГРОК';
+  const b=getBoard(); b.push({name:name.slice(0,10), pts});
+  b.sort((a,z)=>z.pts-a.pts); localStorage.setItem('pd_board', JSON.stringify(b.slice(0,5)));
+  loadLeaderboard();
+}
+function loadLeaderboard(){
+  const b=getBoard();
+  if(!b.length){ el('lb').style.display='none'; return; }
+  el('lb').style.display='block';
+  el('lbList').innerHTML = b.map(r=>`<li>${r.name}<span>${r.pts.toLocaleString('ru-RU')}</span></li>`).join('');
+  best = Math.max(best, b[0].pts);
+  el('best').textContent='РЕКОРД: '+best.toLocaleString('ru-RU');
+}
+
+/* ---------- TUTORIAL (onboarding) ---------- */
+const STEPS = [
+  { icon:'🧬', title:'Это белок p53',
+    body:`Перед тобой <span class="hlc">p53</span> — «страж генома», знаменитый противораковый белок (структура <b>1TUP</b> из реальной базы данных PDB).<br><br>
+          <b>Мышь</b> — вращать · <b>колесо</b> — приблизить · <kbd>Shift</kbd>+<b>мышь</b> — сдвинуть камеру (как в Blender).<br><br>
+          Кнопка <span class="hl">🔎 ИЗУЧЕНИЕ</span> включает режим, где наведение курсора рассказывает, что за что отвечает (в т.ч. раковые «горячие точки»).` },
+  { icon:'🔹', title:'Вот ТВОЯ молекула и ЦЕЛЬ',
+    body:`Голубая молекула с подписью <span class="hlc">«ТВОЁ ЛЕКАРСТВО»</span> — то, чем ты управляешь.<br><br>
+          <span class="hl">Зелёный пульсирующий маркер со стрелкой «◎ ЦЕЛЬ»</span> — это карман белка (цинковый сайт p53). Именно туда нужно привести молекулу.` },
+  { icon:'🎮', title:'Управление молекулой',
+    body:`<b>Двигать:</b> <kbd>←</kbd><kbd>↑</kbd><kbd>→</kbd><kbd>↓</kbd> — по экрану, <kbd>W</kbd>/<kbd>S</kbd> — ближе/дальше.<br>
+          <b>Вращать:</b> <kbd>Q</kbd>/<kbd>E</kbd> · <kbd>A</kbd>/<kbd>D</kbd> · <kbd>Z</kbd>/<kbd>C</kbd>.<br><br>
+          Пунктирная линия ведёт от молекулы к цели. Веди её в карман — шкала внизу пойдёт красный → жёлтый → <span class="hl">ЗЕЛЁНЫЙ = В КАРМАНЕ</span> (и зазвучит «дзинь»).` },
+  { icon:'🏆', title:'Проверь и побеждай',
+    body:`Когда шкала <span class="hl">зелёная</span>, жми <span class="hlc">«▶ ТЕСТ ЛЕКАРСТВА»</span> — получишь энергию связывания (ккал/моль) и очки.<br><br>Чем стабильнее стыковка — тем больше очков, салют 🎆 и место в таблице лидеров!` },
+];
+let tstep = 0;
+function renderTut(){
+  const s = STEPS[tstep];
+  el('tutIcon').textContent = s.icon;
+  el('tutTitle').textContent = s.title;
+  el('tutBody').innerHTML = s.body;
+  el('tutDots').innerHTML = STEPS.map((_,i)=>`<div class="dot ${i===tstep?'on':''}"></div>`).join('');
+  el('tutPrev').style.visibility = tstep===0 ? 'hidden':'visible';
+  el('tutNext').textContent = tstep===STEPS.length-1 ? '🚀 НАЧАТЬ ИГРУ' : 'Далее ▶';
+}
+function openTut(){ tstep=0; renderTut(); el('tut').classList.add('show'); }
+function closeTut(){ el('tut').classList.remove('show'); localStorage.setItem('pd_seen','1'); }
+el('tutNext').onclick = ()=>{ tstep<STEPS.length-1 ? (tstep++, renderTut()) : closeTut(); };
+el('tutPrev').onclick = ()=>{ if(tstep>0){tstep--; renderTut();} };
+el('tutSkip').onclick = closeTut;
+el('btnHelp').onclick = openTut;
+function maybeTutorial(){ if(!localStorage.getItem('pd_seen')) openTut(); }
+
+init();
+</script>
