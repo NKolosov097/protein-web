@@ -38,6 +38,11 @@
   #barFill{height:100%;width:0%;transition:width .12s linear, background .12s linear}
   .mrow{display:flex;justify-content:space-between;font-size:12px;letter-spacing:1px}
   #status{font-weight:700}
+  /* plain-language mission line + contextual hint inside the meter panel */
+  #mission{font-size:12px;line-height:1.45;color:#c7dbff;margin-bottom:10px;padding-bottom:9px;
+    border-bottom:1px solid var(--line)}
+  #mission b{color:var(--green)}
+  #hint{font-size:11px;color:#9db8e0;margin-top:7px;min-height:14px}
 
   /* controls help bottom-left */
   #help{bottom:18px;left:16px;padding:12px 14px;font-size:11px;line-height:1.7;color:#9db8e0;max-width:210px}
@@ -121,8 +126,10 @@
 </div>
 
 <div id="meter" class="panel">
+  <div id="mission">🎯 <b>Задача:</b> приведи молекулу-ключ в зелёный карман и заткни «выключатель» рака</div>
   <div class="mrow"><span>КОНТАКТ С КАРМАНОМ</span><span id="status">—</span></div>
   <div class="bar"><div id="barFill"></div></div>
+  <div id="hint">—</div>
   <div class="mrow" style="margin-top:6px;color:#6f8bbf">
     <span>до цели: <b id="distVal">—</b> Å</span>
     <span>≤ 5 Å = в кармане</span>
@@ -143,6 +150,7 @@
   <button class="b-ghost" id="btnSound">🔇 ЗВУК: ВЫКЛ</button>
   <button class="b-ghost" id="btnInfo">🔎 ИЗУЧЕНИЕ</button>
   <button class="b-ghost" id="btnReset">↺ СБРОС</button>
+  <button class="b-ghost" id="btnAbout">❓ О ЧЁМ ИГРА</button>
   <button class="b-ghost" id="btnHelp">❔ КАК ИГРАТЬ</button>
 </div>
 
@@ -326,7 +334,7 @@ function draw(t=0){
   // are not destroyed/recreated every frame (that caused the labels to flicker/"jump").
 
   const {mind, world, center} = minDistance(t);
-  const {color, status, pct} = quality(mind);
+  const {color, status, pct, hint} = quality(mind);
   const inPocket = mind <= 5;
 
   // ---- TARGET MARKER: pulsing pocket (zinc site) ----
@@ -366,6 +374,7 @@ function draw(t=0){
   el('barFill').style.boxShadow = '0 0 14px '+color;
   el('status').textContent = status;
   el('status').style.color = color;
+  el('hint').textContent = hint;
   el('distVal').textContent = mind<900 ? mind.toFixed(2) : '—';
 
   // sound — a short pleasant blip only when entering the pocket (no drone)
@@ -377,10 +386,10 @@ function draw(t=0){
 
 // map distance-to-pocket → colour / status / meter fill
 function quality(d){
-  if(d>20)  return {color:'#ff2e5b', status:'ДАЛЕКО',         pct:6};
-  if(d>10)  return {color:'#ffb000', status:'ПОДБИРАЕМСЯ…',   pct:38};
-  if(d>5)   return {color:'#ffe600', status:'БЛИЗКО',         pct:68};
-  return          {color:'#39ff14', status:'★ В КАРМАНЕ!',    pct:100};
+  if(d>20)  return {color:'#ff2e5b', status:'ДАЛЕКО',         pct:6,   hint:'🔑 ключ далеко от скважины — веди его к зелёному карману'};
+  if(d>10)  return {color:'#ffb000', status:'ПОДБИРАЕМСЯ…',   pct:38,  hint:'подводим ключ ближе к «выключателю»…'};
+  if(d>5)   return {color:'#ffe600', status:'БЛИЗКО',         pct:68,  hint:'почти в замочной скважине — ещё чуть-чуть и поверни точнее'};
+  return          {color:'#39ff14', status:'★ В КАРМАНЕ!',    pct:100, hint:'✅ ключ вошёл! жми «ТЕСТ ЛЕКАРСТВА», чтобы заклинить механизм'};
 }
 
 /* ---------- animation loop ("living", breathing molecule) ---------- */
@@ -760,13 +769,24 @@ el('btnDock').onclick = async ()=>{
   score = pts;
   el('scoreVal').textContent = score.toLocaleString('ru-RU');
 
+  // one-time explanation of what the score means, shown on the very first test
+  const firstTest = !localStorage.getItem('pd_score_seen');
+
+  let msg;
   if(pts>best){
     best=pts; el('best').textContent='РЕКОРД: '+best.toLocaleString('ru-RU');
     fireworks(); chimeWin();
-    showToast(`★ РЕКОРД!  ${affinity.toFixed(1)} ккал/моль · ${source}`);
+    msg = `★ РЕКОРД!  ${affinity.toFixed(1)} ккал/моль · ${source}`;
     saveScore(pts);
   } else {
-    showToast(`${affinity.toFixed(1)} ккал/моль · ${pts.toLocaleString('ru-RU')} очков · ${source}`);
+    msg = `${affinity.toFixed(1)} ккал/моль · ${pts.toLocaleString('ru-RU')} очков · ${source}`;
+  }
+
+  if(firstTest){
+    localStorage.setItem('pd_score_seen','1');
+    showToast(`${affinity.toFixed(1)} ккал/моль — это сила «прилипания» ключа. Чем больше минус, тем крепче держится и тем больше очков! (${pts.toLocaleString('ru-RU')})`, 4600);
+  } else {
+    showToast(msg);
   }
 };
 
@@ -776,9 +796,9 @@ el('btnReset').onclick = ()=>{
 };
 
 /* ---------- toast + fireworks ---------- */
-function showToast(msg){
+function showToast(msg, ms=1800){
   const t=el('toast'); t.textContent=msg; t.classList.add('show');
-  clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),1800);
+  clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),ms);
 }
 function fireworks(){
   const cols=['#39ff14','#22e0ff','#a15bff','#ffb000','#ff2e5b'];
@@ -848,39 +868,56 @@ function loadLeaderboard(){
   el('best').textContent='РЕКОРД: '+best.toLocaleString('ru-RU');
 }
 
-/* ---------- TUTORIAL (onboarding) ---------- */
-const STEPS = [
-  { icon:'🧬', title:'Это белок p53',
-    body:`Перед тобой <span class="hlc">p53</span> — «страж генома», знаменитый противораковый белок (структура <b>1TUP</b> из реальной базы данных PDB).<br><br>
-          <b>Мышь</b> — вращать · <b>колесо</b> — приблизить · <kbd>Shift</kbd>+<b>мышь</b> — сдвинуть камеру (как в Blender).<br><br>
-          Кнопка <span class="hl">🔎 ИЗУЧЕНИЕ</span> включает режим, где наведение курсора рассказывает, что за что отвечает (в т.ч. раковые «горячие точки»).` },
-  { icon:'🔹', title:'Вот ТВОЯ молекула и ЦЕЛЬ',
-    body:`Голубая молекула с подписью <span class="hlc">«ТВОЁ ЛЕКАРСТВО»</span> — то, чем ты управляешь.<br><br>
-          <span class="hl">Зелёный пульсирующий маркер со стрелкой «◎ ЦЕЛЬ»</span> — это карман белка (цинковый сайт p53). Именно туда нужно привести молекулу.` },
-  { icon:'🎮', title:'Управление молекулой',
+/* ---------- TUTORIAL (onboarding) ----------
+   Two decks: ABOUT_STEPS explains WHAT/WHY (the lock-and-key metaphor + the real point),
+   HOW_STEPS explains the controls. First visit shows both back-to-back; the two buttons
+   («О ЧЁМ ИГРА» / «КАК ИГРАТЬ») each reopen just their own deck. */
+const ABOUT_STEPS = [
+  { icon:'🔒', title:'Что такое рак — простыми словами',
+    body:`Представь <span class="hl">сломанный механизм</span> внутри клетки: он застрял в режиме «включено» и заставляет клетку делиться без остановки. Это и есть рак.<br><br>
+          У механизма есть уязвимое место — <span class="hlc">«карман»</span>, его «выключатель». Перед тобой реальный раковый белок <b>p53</b> с таким карманом.` },
+  { icon:'🔑', title:'Ты — с ключом в руках',
+    body:`Твоя маленькая молекула — это <span class="hlc">ключ</span> (или затычка).<br><br>
+          Задача — как в детской игрушке, где фигурку нужно вставить в подходящее по форме отверстие: <span class="hl">вставить ключ точно в карман</span> и заклинить «выключатель», чтобы механизм рака перестал работать.<br><br>
+          Ключ нужно не только подвести, но и <b>повернуть правильной стороной</b>. Чем точнее он входит в карман, тем «зеленее» шкала — значит, держится крепче.` },
+  { icon:'🔬', title:'Зачем это по-настоящему',
+    body:`Это не просто игра. Если ты найдёшь <span class="hl">форму и положение ключа</span>, при которых он прилипает крепче всего, — эти данные реально полезны учёным.<br><br>
+          Такую молекулу можно синтезировать в пробирке и сделать из неё <span class="hlc">настоящее лекарство от рака</span>. Ты буквально ищешь, чем «заткнуть» раковый белок.` },
+];
+const HOW_STEPS = [
+  { icon:'🔹', title:'Твой ключ и цель',
+    body:`Голубая молекула с подписью <span class="hlc">«ТВОЁ ЛЕКАРСТВО»</span> — это <b>молекула-кандидат в лекарство</b> (крошечное вещество, которым лечат). В игре это твой ключ, им ты управляешь.<br><br>
+          <span class="hl">Зелёный пульсирующий маркер со стрелкой «◎ ЦЕЛЬ»</span> — это карман белка («выключатель»). Веди ключ прямо в него.<br><br>
+          Карман <b>не случаен</b>: это реальный цинковый сайт (Zn²⁺) белка p53 из структуры <b>1TUP</b> — одно из ключевых уязвимых мест.` },
+  { icon:'🎮', title:'Управление ключом',
     body:`<b>Двигать:</b> <kbd>←</kbd><kbd>↑</kbd><kbd>→</kbd><kbd>↓</kbd> — по экрану, <kbd>W</kbd>/<kbd>S</kbd> — ближе/дальше.<br>
           <b>Вращать:</b> <kbd>Q</kbd>/<kbd>E</kbd> · <kbd>A</kbd>/<kbd>D</kbd> · <kbd>Z</kbd>/<kbd>C</kbd>.<br><br>
-          Пунктирная линия ведёт от молекулы к цели. Веди её в карман — шкала внизу пойдёт красный → жёлтый → <span class="hl">ЗЕЛЁНЫЙ = В КАРМАНЕ</span> (и зазвучит «дзинь»).` },
-  { icon:'🏆', title:'Проверь и побеждай',
-    body:`Когда шкала <span class="hl">зелёная</span>, жми <span class="hlc">«▶ ТЕСТ ЛЕКАРСТВА»</span> — получишь энергию связывания (ккал/моль) и очки.<br><br>Чем стабильнее стыковка — тем больше очков, салют 🎆 и место в таблице лидеров!` },
+          Камеру крути <b>мышью</b>, приближай <b>колесом</b>, сдвигай <kbd>Shift</kbd>+<b>мышь</b>.<br><br>
+          Пунктирная линия ведёт от ключа к цели, а шкала внизу идёт красный → жёлтый → <span class="hl">ЗЕЛЁНЫЙ = В КАРМАНЕ</span> (и звучит «дзинь»).` },
+  { icon:'🏆', title:'Проверь ключ и побеждай',
+    body:`Когда шкала <span class="hl">зелёная</span>, жми <span class="hlc">«▶ ТЕСТ ЛЕКАРСТВА»</span>. Получишь <b>энергию связывания</b> (ккал/моль) — насколько крепко ключ прилип.<br><br>
+          <span class="hl">Чем больше минус</span> (например −9.5), тем сильнее держится и тем больше очков, салют 🎆 и место в таблице лидеров!<br><br>
+          Кнопка <span class="hlc">🔎 ИЗУЧЕНИЕ</span> даёт навести курсор и узнать, что за что отвечает в белке.` },
 ];
-let tstep = 0;
+let curSteps = [], tstep = 0;
 function renderTut(){
-  const s = STEPS[tstep];
+  const s = curSteps[tstep];
   el('tutIcon').textContent = s.icon;
   el('tutTitle').textContent = s.title;
   el('tutBody').innerHTML = s.body;
-  el('tutDots').innerHTML = STEPS.map((_,i)=>`<div class="dot ${i===tstep?'on':''}"></div>`).join('');
+  el('tutDots').innerHTML = curSteps.map((_,i)=>`<div class="dot ${i===tstep?'on':''}"></div>`).join('');
   el('tutPrev').style.visibility = tstep===0 ? 'hidden':'visible';
-  el('tutNext').textContent = tstep===STEPS.length-1 ? '🚀 НАЧАТЬ ИГРУ' : 'Далее ▶';
+  el('tutNext').textContent = tstep===curSteps.length-1 ? '🚀 НАЧАТЬ ИГРУ' : 'Далее ▶';
 }
-function openTut(){ tstep=0; renderTut(); el('tut').classList.add('show'); }
+function openTut(steps){ curSteps=steps; tstep=0; renderTut(); el('tut').classList.add('show'); }
 function closeTut(){ el('tut').classList.remove('show'); localStorage.setItem('pd_seen','1'); }
-el('tutNext').onclick = ()=>{ tstep<STEPS.length-1 ? (tstep++, renderTut()) : closeTut(); };
+el('tutNext').onclick = ()=>{ tstep<curSteps.length-1 ? (tstep++, renderTut()) : closeTut(); };
 el('tutPrev').onclick = ()=>{ if(tstep>0){tstep--; renderTut();} };
 el('tutSkip').onclick = closeTut;
-el('btnHelp').onclick = openTut;
-function maybeTutorial(){ if(!localStorage.getItem('pd_seen')) openTut(); }
+el('btnAbout').onclick = ()=> openTut(ABOUT_STEPS);
+el('btnHelp').onclick  = ()=> openTut(HOW_STEPS);
+// first visit → the full story: meaning first, then controls
+function maybeTutorial(){ if(!localStorage.getItem('pd_seen')) openTut(ABOUT_STEPS.concat(HOW_STEPS)); }
 
 init();
 </script>
