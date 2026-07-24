@@ -167,16 +167,18 @@
 </div>
 
 <div id="help" class="panel">
-  <div><b>ДВИЖЕНИЕ</b></div>
-  <div><kbd>← ↑ → ↓</kbd> двигать по экрану</div>
-  <div><kbd>W</kbd>/<kbd>S</kbd> ближе / дальше</div>
-  <div style="margin-top:6px"><b>ВРАЩЕНИЕ</b></div>
-  <div><kbd>Q</kbd>/<kbd>E</kbd> · <kbd>A</kbd>/<kbd>D</kbd> · <kbd>Z</kbd>/<kbd>C</kbd></div>
-  <div style="margin-top:6px;color:#6f8bbf">Мышь — вращать · <kbd>Shift</kbd>+мышь — сдвиг</div>
+  <div><b>ЛЕКАРСТВО</b> <span style="color:#6f8bbf">(мышь)</span></div>
+  <div>🖱 тащи молекулу — двигать</div>
+  <div>🖱 правый клик + тащи — вращать</div>
+  <div>колесо над молекулой — глубже / ближе</div>
+  <div style="margin-top:6px;color:#6f8bbf"><b style="color:var(--cyan)">КАМЕРА:</b> тащи фон — поворот · <kbd>Shift</kbd>+мышь — сдвиг · колесо — зум</div>
+  <div style="margin-top:5px;color:#6f8bbf">Клавиши: <kbd>← ↑ → ↓</kbd> <kbd>W</kbd>/<kbd>S</kbd> двигать · <kbd>Q E A D Z C</kbd> вращать</div>
 </div>
 
 <div id="actions" class="panel">
   <button class="b-dock" id="btnDock">▶ ТЕСТ ЛЕКАРСТВА</button>
+  <button class="b-ghost" id="btnSolve">💡 ПОДСКАЗКА</button>
+  <button class="b-ghost" id="btnEngine">🧪 РАСЧЁТ: ОБУЧЕНИЕ</button>
   <button class="b-ghost" id="btnLevels">🗂 УРОВНИ</button>
   <button class="b-ghost" id="btnSound">🔇 ЗВУК: ВЫКЛ</button>
   <button class="b-ghost" id="btnInfo">🔎 ИЗУЧЕНИЕ</button>
@@ -218,11 +220,13 @@
 <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
 <script>
 /* ============================================================
-   PROTEIN DOCKER  —  Этап 1 (3D-белок) + Этап 2 (докинг-геймплей)
+   PROTEIN DOCKER  —  Stage 1 (3D protein) + Stage 2 (docking gameplay)
    ============================================================ */
 
 const el = id => document.getElementById(id);
 let viewer, proteinAtoms = [], hoverAtoms = [], pocket = null, SURF = null;
+// protein atoms near the pocket — used by the shape-contact scoring (see fitEnergy)
+let POCKET_ATOMS = [];
 let infoMode = false, hoverInfo = null;   // study mode + current tooltip
 let CHAIN_STATS = {};                      // per-chain summary (residue count, DNA/protein)
 let detailLevel = 'chain';                 // current study detail: 'chain' (far) or 'residue' (close)
@@ -232,6 +236,9 @@ const CLOSE_PXA = 15;
 
 // ligand state (the small "drug" molecule)
 const lig = { x:0, y:0, z:35, rx:0, ry:0, rz:0 };
+// "show solution" ghost: the ideal pose for the current level (computed on demand), and
+// whether it is currently displayed. It is a SEPARATE body — not the molecule you control.
+let solutionPose = null, showSolution = false;
 // local coordinates of the ligand atoms (a simple molecule ~ benzene ring + tail)
 const LIG_LOCAL = [
   {x: 0.0, y: 1.4, z:0, c:'#22e0ff'},
@@ -246,22 +253,22 @@ const LIG_LOCAL = [
 let score = 0, best = 0, breath = 0;
 
 /* ============================================================
-   УРОВНИ — реальные раковые мишени из PDB.
-   Каждая структура грузится по своему 4-символьному коду PDB
-   (как раньше грузился p53 · 1TUP). Если какой-то код не
-   подгрузится, игра покажет ошибку и вернёт к выбору уровня —
-   тогда достаточно поправить поле `pdb` ниже.
+   LEVELS — real cancer targets from the PDB.
+   Each structure is downloaded by its own 4-character PDB id
+   (like p53 · 1TUP was before). If some id fails to load, the
+   game shows an error and returns to the level picker — then it's
+   enough to fix the `pdb` field below.
 
-   pocket: как найти «карман» (цель для стыковки):
-     {type:'elem', value:'ZN'}  — по химическому элементу (ион);
-     {type:'resn', value:'STI'} — по имени остатка/лиганда;
-     {type:'auto'}              — автоматически: самый крупный
-                                  связанный лиганд (реальное лекарство
-                                  в кристалле), иначе центр белка.
-   open:true  — «открытая задача»: лекарства ещё нет, эталона нет,
-                уровень никогда не помечается «пройдено».
+   pocket: how to find the "pocket" (the docking target):
+     {type:'elem', value:'ZN'}  — by chemical element (an ion);
+     {type:'resn', value:'STI'} — by residue/ligand name;
+     {type:'auto'}              — automatically: the largest bound
+                                  ligand (the real drug in the
+                                  crystal), else the protein centre.
+   open:true  — an "open problem": no drug exists yet, no reference,
+                the level is never marked "solved".
    ============================================================ */
-// «горячие точки» p53 (частые раковые мутации) — только для 1-го уровня
+// p53 "hotspots" (frequent cancer mutations) — for level 1 only
 const P53_HOTSPOTS = {
   175:'Arg175 — САМАЯ частая раковая мутация p53. Держит укладку домена у цинка.',
   176:'Cys176 — удерживает ион цинка (структурный центр).',
@@ -292,7 +299,7 @@ const LEVELS = [
     drug:'Соторасиб (AMG 510)', pocket:{type:'auto', label:'КАРМАН (сайт соторасиба)'},
     blurb:'KRAS 40 лет считался «недоступным». В 2021-м соторасиб впервые связал мутант G12C — настоящий прорыв. Карман — по реальному лиганду в структуре.' },
 
-  // ---------- ОТКРЫТЫЕ ЗАДАЧИ: лекарства ещё нет ни у кого ----------
+  // ---------- OPEN PROBLEMS: no drug exists yet for anyone ----------
   { id:'myc', name:'MYC', pdb:'1NKP', sub:'🔬 открытая задача', open:true,
     drug:null, pocket:{type:'auto', label:'ПОВЕРХНОСТЬ MYC'},
     blurb:'MYC разгоняет рост огромного числа опухолей, но у него нет удобного кармана — прямого лекарства не существует до сих пор. Это «святой Грааль» онкологии. Эталона нет: любой твой результат — поиск на переднем крае науки.' },
@@ -307,22 +314,30 @@ let HOTSPOTS = {};   // per-level cancer-mutation hotspots (set on load)
 // standard residues — everything else (except water) is treated as hetero (ion / small molecule)
 const AA_RESN = new Set('ALA ARG ASN ASP CYS GLN GLU GLY HIS ILE LEU LYS MET PHE PRO SER THR TRP TYR VAL MSE SEC'.split(' '));
 const DNA_RESN = ['DA','DC','DG','DT','A','C','G','T','U','DU'];
+// structural metal ions — coloured gold so the target (e.g. p53's Zn) never looks like water/a drug
+const METAL_SEL = {elem:['Zn','Mg','Mn','Fe','Ca','Cu','Ni','Co']};
 
 /* ---------- 3Dmol init ---------- */
 function init(){
   viewer = $3Dmol.createViewer("viewer", { backgroundColor:0x05060f });
   el('load').style.display='none';     // nothing is loading until a level is picked
   loadLeaderboard();
-  // first visit → the full story (concept + controls), then the level picker;
-  // otherwise go straight to the level picker.
+  // first visit → the full story (concept + controls); closeTut() then loads the default level.
+  // otherwise → jump straight into a level (last played, or level 1 if none was ever chosen).
   if(!localStorage.getItem('pd_seen')) openTut(ABOUT_STEPS.concat(HOW_STEPS));
-  else openLevels();
+  else loadLevel(defaultLevelIdx());
+}
+// which level to open on startup: the last one the player chose, else the first (level 1)
+function defaultLevelIdx(){
+  const last = parseInt(localStorage.getItem('pd_last_level'), 10);
+  return (Number.isInteger(last) && LEVELS[last]) ? last : 0;
 }
 
 /* ---------- load a chosen level (PDB structure) ---------- */
 let loadTimer = null;
 function loadLevel(i){
   LEVEL_IDX = i; LEVEL = LEVELS[i];
+  localStorage.setItem('pd_last_level', i);   // remember it → auto-loaded next time (see defaultLevelIdx)
   const myGen = ++gen;                 // invalidate any running animation loop / pending load
   closeLevels(); hideTip();
   if(infoMode) setInfoMode(false);     // study mode off when switching targets
@@ -332,6 +347,7 @@ function loadLevel(i){
   try{ viewer.removeAllSurfaces(); }catch(e){}
   viewer.removeAllShapes(); viewer.removeAllLabels(); resetLabels();
   proteinAtoms = []; hoverAtoms = []; pocket = null; wasInPocket = false;
+  solutionPose = null; showSolution = false; syncSolveBtn();   // drop any hint from the previous level
 
   // HUD / title reflect the current target
   document.title = 'PROTEIN DOCKER — ' + LEVEL.name + ' (' + LEVEL.pdb + ')';
@@ -370,6 +386,8 @@ function onModelLoaded(atoms, myGen){
   viewer.setStyle({}, { cartoon:{ color:'spectrum' } });
   addProteinSurface(0.55);
   viewer.setStyle({ hetflag:true }, { sphere:{ scale:0.4, color:'magenta' } });
+  viewer.setStyle({ resn:['HOH','WAT'] }, {});   // hide crystallographic water (clutter, and it looks like the target)
+  viewer.setStyle(METAL_SEL, { sphere:{ scale:0.6, color:'#ffcc33' } });   // structural metal ions (incl. the Zn target) — gold, not magenta
 
   // collect atom coordinates for distance / picking
   proteinAtoms = atoms.map(a => {
@@ -385,6 +403,7 @@ function onModelLoaded(atoms, myGen){
   // target pocket per level (ion / named ligand / auto-detected drug / centroid)
   const pk = findPocket(proteinAtoms);
   pocket = pk.pos; POCKET_LABEL = pk.label;
+  POCKET_ATOMS = buildPocketAtoms();   // protein wall around the target → shape-fit scoring
 
   // ligand starts outside so the player guides it toward the target
   lig.x = pocket.x + 26; lig.y = pocket.y + 14; lig.z = pocket.z + 22;
@@ -422,11 +441,43 @@ function findPocket(atoms){
   if(keys.length){
     const uncommon = keys.filter(k => !COMMON_HET.has(groups[k].rn));
     const pool = (uncommon.length ? uncommon : keys).sort((a,b)=>groups[b].n-groups[a].n);
-    return {pos:centroid(groups[pool[0]].pts), label};
+    const top = groups[pool[0]];
+    // use a bound molecule only if it's substantial — a real drug/nucleotide (e.g. RAS's
+    // GNP marks the functional site), NOT a lone crystallisation ion / additive
+    if(uncommon.length || top.n >= 8) return {pos:centroid(top.pts), label};
   }
-  // no ligand → centroid of the protein itself
+  // no meaningful ligand (the "undruggable" open targets) → a concave spot on the SURFACE,
+  // not the buried centre of mass
+  return {pos:findSurfacePocket(atoms), label};
+}
+// A lightweight pocket finder for targets with no bound ligand: scans protein atoms for a
+// spot that is enclosed at medium range yet not densely packed up close — i.e. a concave
+// surface pocket rather than the buried core or a flat patch. Runs once per level load,
+// downsampled so it stays cheap. Approximate (a game heuristic, not a validated detector).
+function findSurfacePocket(atoms){
   const prot = atoms.filter(a=>!a.het);
-  return {pos:centroid(prot.length?prot:atoms), label};
+  if(!prot.length) return centroid(atoms);
+  const cands = downsample(prot, 1000), cloud = downsample(prot, 2500);
+  const R1=5.5*5.5, R2=11*11;
+  let best=null, bestScore=-Infinity;
+  for(const a of cands){
+    let near=0, mid=0;
+    for(const p of cloud){
+      const dx=a.x-p.x, dy=a.y-p.y, dz=a.z-p.z, d2=dx*dx+dy*dy+dz*dz;
+      if(d2<R1) near++;
+      if(d2<R2) mid++;
+    }
+    const score = mid - 2.6*near;         // enclosed (mid) but accessible (low near) → a pocket
+    if(score>bestScore){ bestScore=score; best=a; }
+  }
+  return best ? {x:best.x, y:best.y, z:best.z} : centroid(prot);
+}
+// evenly thin an array down to at most `cap` items (for cheap O(n²) geometry scans)
+function downsample(arr, cap){
+  if(arr.length<=cap) return arr;
+  const st=Math.ceil(arr.length/cap), s=[];
+  for(let i=0;i<arr.length;i+=st) s.push(arr[i]);
+  return s;
 }
 // common cofactors / ions / crystallization additives — skipped when auto-picking the drug
 const COMMON_HET = new Set(('HOH WAT GDP GTP GNP GSP GCP GPP GDP MG MN NA CL K CA ZN FE CU NI ' +
@@ -473,12 +524,86 @@ function minDistance(t=0){
   return {mind, world, center};
 }
 
+/* ---------- shape-contact scoring (orientation matters) ----------
+   The protein wall around the pocket is sampled once per level (POCKET_ATOMS).
+   For every ligand atom we look at its nearest protein atom:
+     • ~3.2 Å  → a "good" van-der-Waals contact  (reward)
+     • < 2.3 Å → a steric clash / overlap        (penalty)
+   Summed with a proximity term (bring the molecule to the pocket), this turns
+   into a binding energy where BOTH position AND orientation change the result —
+   the same model runs in the browser and in server.py so the number matches. */
+function buildPocketAtoms(){
+  if(!pocket) return [];
+  const R2 = 14*14, out = [];
+  for(const a of proteinAtoms){
+    if(a.het) continue;                       // protein / DNA walls only (not the bound drug/ions/water)
+    const dx=a.x-pocket.x, dy=a.y-pocket.y, dz=a.z-pocket.z;
+    if(dx*dx+dy*dy+dz*dz < R2) out.push({x:a.x, y:a.y, z:a.z});
+  }
+  // cap the sample (per-frame cost + server payload) by evenly striding
+  const CAP = 700;
+  if(out.length > CAP){
+    const stride = Math.ceil(out.length/CAP), s = [];
+    for(let i=0;i<out.length;i+=stride) s.push(out[i]);
+    return s;
+  }
+  return out;
+}
+function fitEnergy(world){
+  const c = centroid(world);
+  const centerDist = pocket ? dist(c, pocket) : 1e9;
+  let good=0, clash=0;
+  const PA = POCKET_ATOMS;
+  for(let j=0;j<world.length;j++){
+    const w=world[j]; let d2min=Infinity;
+    for(let i=0;i<PA.length;i++){
+      const dx=w.x-PA[i].x, dy=w.y-PA[i].y, dz=w.z-PA[i].z;
+      const d2=dx*dx+dy*dy+dz*dz;
+      if(d2<d2min) d2min=d2;
+    }
+    const d=Math.sqrt(d2min);
+    if(d<2.3)       clash += (2.3-d);                              // overlap depth
+    else if(d<4.5)  good  += Math.max(0, 1-Math.abs(d-3.2)/1.3);   // bump peaking at ~3.2 Å
+  }
+  const prox = Math.max(0, 1-centerDist/18);
+  let aff = -1 - 5*prox - 1.1*good + 2.2*clash;   // more negative = stronger binding
+  aff = Math.max(-12, Math.min(-0.5, aff));
+  return {affinity:aff, centerDist, good, clash};
+}
+
+/* ---------- "show solution" pose ----------
+   Place the ligand atoms for a given pose (position + Euler angles), without breathing. */
+function poseWorld(pose){
+  return LIG_LOCAL.map(p=>{
+    const r = rot(p.x, p.y, p.z, pose.rx, pose.ry, pose.rz);
+    return {x:r.x+pose.x, y:r.y+pose.y, z:r.z+pose.z};
+  });
+}
+// Find an ideal pose to show as the blinking "answer": a coarse grid search over
+// orientations and small position offsets around the pocket, maximising fitEnergy.
+// Computed once per level (cached in solutionPose). ~6k evaluations → instant.
+function solveBestPose(){
+  if(!pocket) return null;
+  const ANG = [0, Math.PI/3, 2*Math.PI/3, Math.PI, 4*Math.PI/3, 5*Math.PI/3];
+  const OFF = [-2.4, 0, 2.4];
+  let best=null, bestAff=Infinity;
+  for(const ox of OFF) for(const oy of OFF) for(const oz of OFF){
+    const px=pocket.x+ox, py=pocket.y+oy, pz=pocket.z+oz;
+    for(const rx of ANG) for(const ry of ANG) for(const rz of ANG){
+      const pose={x:px, y:py, z:pz, rx, ry, rz};
+      const aff = fitEnergy(poseWorld(pose)).affinity;
+      if(aff<bestAff){ bestAff=aff; best=pose; }
+    }
+  }
+  return best;
+}
+
 /* ---------- persistent labels (created once, refreshed only on movement) ---------- */
 // Recreating labels every animation frame made them flicker/"jump", so we cache them
 // and only rebuild the ligand label when the molecule actually moves.
 let targetLabel=null, ligLabel=null, lastLigLabelPos='';
 function syncLabels(){
-  // target ("◎ ЦЕЛЬ: КАРМАН") — static, so create it a single time
+  // target marker label (◎ "TARGET") — static, so create it a single time
   if(!targetLabel){
     targetLabel = viewer.addLabel("◎ ЦЕЛЬ: " + POCKET_LABEL, {
       position:{x:pocket.x, y:pocket.y+12, z:pocket.z},
@@ -487,7 +612,7 @@ function syncLabels(){
       inFront:true, alignment:'bottomCenter'
     });
   }
-  // ligand ("🔹 ТВОЁ ЛЕКАРСТВО") — follows the molecule, so rebuild only when it moved
+  // ligand label (🔹 "YOUR DRUG") — follows the molecule, so rebuild only when it moved
   const key = lig.x+','+lig.y+','+lig.z;
   if(key!==lastLigLabelPos){
     if(ligLabel) viewer.removeLabel(ligLabel);
@@ -515,17 +640,21 @@ function draw(t=0){
   // are not destroyed/recreated every frame (that caused the labels to flicker/"jump").
 
   const {mind, world, center} = minDistance(t);
-  const {color, status, pct, hint} = quality(mind);
+  const fit = fitEnergy(world);
+  const {color, status, pct, hint} = quality(fit);
   const inPocket = mind <= 5;
 
   // ---- TARGET MARKER: pulsing pocket (zinc site) ----
   const pulse = 2.4 + 0.5*Math.sin(t*1.5);
   viewer.addSphere({center:pocket, radius:pulse, color:'#39ff14', opacity:0.22});
   viewer.addSphere({center:pocket, radius:0.9, color:'#39ff14', opacity:0.9});
-  // arrow pointing into the pocket from above
+  // arrow pointing INTO the pocket from "above" ON SCREEN — anchored to the camera's up
+  // axis (not world-Y), so it always lines up with the target and its tip sits on the
+  // marker no matter how the camera is turned. (Previously it floated off to the side.)
+  const up = camBasis().up;
   viewer.addArrow({
-    start:{x:pocket.x, y:pocket.y+11, z:pocket.z},
-    end:{x:pocket.x, y:pocket.y+3.2, z:pocket.z},
+    start:{x:pocket.x+up[0]*9,   y:pocket.y+up[1]*9,   z:pocket.z+up[2]*9},
+    end:  {x:pocket.x+up[0]*2.4, y:pocket.y+up[1]*2.4, z:pocket.z+up[2]*2.4},
     radius:0.55, color:'#39ff14', radiusRatio:2.2
   });
   // target + ligand labels — created once and refreshed only on movement (see syncLabels)
@@ -549,6 +678,16 @@ function draw(t=0){
     color, dashed:true, fromCap:1, toCap:1
   });
 
+  // ---- SOLUTION GHOST: a SEPARATE blinking molecule showing the ideal pose to copy ----
+  // Constant size (no "inflation"); the pulse is pure brightness/opacity so it reads clearly.
+  if(showSolution && solutionPose){
+    const blink = 0.65 + 0.35*(0.5+0.5*Math.sin(t*3));   // bright opacity pulse: 0.65 … 1.0
+    const gw = poseWorld(solutionPose);
+    gw.forEach((w,i)=>viewer.addSphere({center:w, radius:0.55, color:LIG_LOCAL[i].c, opacity:blink}));
+    for(let i=0;i<6;i++) viewer.addCylinder({start:gw[i], end:gw[(i+1)%6], radius:0.16, color:'#eaffff', opacity:blink});
+    viewer.addCylinder({start:gw[0], end:gw[6], radius:0.16, color:'#39ff14', opacity:blink});
+  }
+
   // HUD
   el('barFill').style.width = pct+'%';
   el('barFill').style.background = color;
@@ -565,12 +704,24 @@ function draw(t=0){
   return mind;
 }
 
-// map distance-to-pocket → colour / status / meter fill
-function quality(d){
-  if(d>20)  return {color:'#ff2e5b', status:'ДАЛЕКО',         pct:6,   hint:'🔑 ключ далеко от скважины — веди его к зелёному карману'};
-  if(d>10)  return {color:'#ffb000', status:'ПОДБИРАЕМСЯ…',   pct:38,  hint:'подводим ключ ближе к «выключателю»…'};
-  if(d>5)   return {color:'#ffe600', status:'БЛИЗКО',         pct:68,  hint:'почти в замочной скважине — ещё чуть-чуть и поверни точнее'};
-  return          {color:'#39ff14', status:'★ В КАРМАНЕ!',    pct:100, hint:'✅ ключ вошёл! жми «ТЕСТ ЛЕКАРСТВА», чтобы заклинить механизм'};
+// map shape-fit → colour / status / meter fill.
+// Two phases: first GET to the pocket (position), then SEAT it well (orientation).
+function quality(fit){
+  const {centerDist, clash, affinity} = fit;
+  // ---- phase 1: still bringing the key toward the pocket ----
+  if(centerDist>20) return {color:'#ff2e5b', status:'ДАЛЕКО',       pct:6,  hint:'🔑 тащи молекулу мышью к зелёному карману'};
+  if(centerDist>10) return {color:'#ff8a1e', status:'ПОДБИРАЕМСЯ…', pct:26, hint:'ещё ближе к «выключателю» — тащи мышью'};
+  if(centerDist>5)  return {color:'#ffb000', status:'БЛИЗКО',       pct:44, hint:'почти в скважине — доведи вплотную к зелёной метке'};
+  // ---- phase 2: in the pocket → orientation / seating now drives the score ----
+  // seating quality from the binding energy: -3 (loose) … -12 (tight)
+  const q = Math.max(0, Math.min(1, (-affinity-3)/9));
+  const pct = Math.round(55 + q*45);
+  if(clash>1.2) return {color:'#ffb000', status:'УПИРАЕТСЯ', pct:Math.min(pct,62),
+    hint:'молекула сталкивается с белком — правый клик + мышь, поверни, чтобы легла плотнее'};
+  if(q>0.75)    return {color:'#39ff14', status:'★ ПЛОТНО СЕЛ!', pct:100,
+    hint:'✅ отличная посадка! жми «ТЕСТ ЛЕКАРСТВА»'};
+  return          {color:'#ffe600', status:'В КАРМАНЕ', pct,
+    hint:'поворачивай (правый клик + мышь) — ищи угол, где ключ ляжет плотнее'};
 }
 
 /* ---------- animation loop ("living", breathing molecule) ---------- */
@@ -608,6 +759,17 @@ window.addEventListener('keydown', e=>{
   if(ok) e.preventDefault();
 });
 
+// is the cursor (canvas-relative px) over the ligand? projects the molecule to the
+// screen and checks proximity to any of its atoms → used to grab/drag it directly.
+function ligHit(mx, my){
+  if(!pocket || !viewer) return false;
+  const world = LIG_LOCAL.map(p=>ligWorld(p, breath));
+  const pts = viewer.modelToScreen([centroid(world), ...world]);
+  let d2min=Infinity;
+  for(const s of pts){ const dx=s.x-mx, dy=s.y-my, d2=dx*dx+dy*dy; if(d2<d2min) d2min=d2; }
+  return d2min < 34*34;   // grab radius in px
+}
+
 // 3D anchor point under the cursor: the atom whose projection is nearest to it.
 // Returns null when the cursor is over empty space (too far from any atom).
 function anchorFor(mx, my){
@@ -628,10 +790,18 @@ function anchorFor(mx, my){
 // screen position, zoom, then translate the scene so the anchor lands back where it was.
 window.addEventListener('wheel', e=>{
   if(!viewer || !el('viewer').contains(e.target)) return;
+  const r = el('viewer').getBoundingClientRect();
+  const mx = e.clientX - r.left, my = e.clientY - r.top;
+  // cursor over the molecule (or already dragging it) → wheel pushes it deeper / nearer
+  if(!infoMode && (draggingLig || ligHit(mx, my))){
+    e.preventDefault(); e.stopPropagation();
+    const b = camBasis(), s = e.deltaY < 0 ? 1 : -1, step = 1.4;   // up = toward the viewer
+    lig.x += b.fwd[0]*s*step; lig.y += b.fwd[1]*s*step; lig.z += b.fwd[2]*s*step;
+    return;
+  }
   e.preventDefault(); e.stopPropagation();
   const f = e.deltaY < 0 ? 1.15 : 0.87;
-  const r = el('viewer').getBoundingClientRect();
-  const anchor = anchorFor(e.clientX - r.left, e.clientY - r.top);
+  const anchor = anchorFor(mx, my);
   const before = anchor ? viewer.modelToScreen([anchor])[0] : null;
   viewer.zoom(f, 0);                             // instant, so the measured translate stays accurate
   if(before){
@@ -643,24 +813,71 @@ window.addEventListener('wheel', e=>{
   if(infoMode) updateDetailLevel();
 }, {passive:false, capture:true});
 
-// Shift + mouse drag = pan the camera (like in Blender).
-// Intercept the event before 3Dmol so it pans instead of rotating.
+/* ---------- direct mouse manipulation of the ligand ("grab the key") ----------
+   Best practice from 3D editors: you grab the object itself with the mouse.
+     • left-drag ON the molecule   → move it in the screen plane
+     • right-drag ON the molecule  → rotate it (trackball)
+     • wheel over the molecule     → push it deeper / nearer (handled above)
+     • Shift + left-drag           → pan the camera (unchanged)
+     • left-drag on empty space    → orbit the camera (3Dmol default, not intercepted)
+   We intercept in the capture phase and stopPropagation so 3Dmol doesn't also move
+   the camera; empty-space clicks fall through to 3Dmol untouched. */
 let panning=false, lastPX=0, lastPY=0;
+let draggingLig=false, rotatingLig=false, lastLX=0, lastLY=0;
 window.addEventListener('mousedown', e=>{
-  if(viewer && e.shiftKey && e.button===0 && el('viewer').contains(e.target)){
+  if(!viewer || !el('viewer').contains(e.target)) return;
+  // Shift = pan the camera (works in every mode, like Blender)
+  if(e.shiftKey && e.button===0){
     panning=true; lastPX=e.clientX; lastPY=e.clientY;
     if(infoMode){ hoverInfo=null; hideTip(); }
-    e.preventDefault(); e.stopPropagation();
+    e.preventDefault(); e.stopPropagation(); return;
   }
-}, true);
-window.addEventListener('mousemove', e=>{
-  if(!panning) return;
-  const dx=e.clientX-lastPX, dy=e.clientY-lastPY;
-  lastPX=e.clientX; lastPY=e.clientY;
-  viewer.translate(dx, -dy, 0);   // 3Dmol's translate Y is screen-inverted → negate dy
+  if(infoMode) return;                 // study mode owns the cursor (hover tooltips)
+  const r=el('viewer').getBoundingClientRect();
+  if(!ligHit(e.clientX-r.left, e.clientY-r.top)) return;   // not on the molecule → let 3Dmol orbit
+  if(e.button===2)      rotatingLig=true;   // right-drag → rotate
+  else if(e.button===0) draggingLig=true;   // left-drag  → move
+  else return;
+  lastLX=e.clientX; lastLY=e.clientY;
+  el('viewer').style.cursor='grabbing';
   e.preventDefault(); e.stopPropagation();
 }, true);
-window.addEventListener('mouseup', e=>{ if(panning){ panning=false; e.stopPropagation(); } }, true);
+window.addEventListener('mousemove', e=>{
+  if(panning){
+    const dx=e.clientX-lastPX, dy=e.clientY-lastPY;
+    lastPX=e.clientX; lastPY=e.clientY;
+    viewer.translate(dx, -dy, 0);   // 3Dmol's translate Y is screen-inverted → negate dy
+    e.preventDefault(); e.stopPropagation(); return;
+  }
+  if(draggingLig){
+    // move in the screen plane, 1:1 with the cursor (convert px → Ångström)
+    const dx=e.clientX-lastLX, dy=e.clientY-lastLY;
+    lastLX=e.clientX; lastLY=e.clientY;
+    const b=camBasis(), k=1/(pxPerA()||8);   // Å per screen-pixel at the current zoom
+    lig.x += (b.right[0]*dx - b.up[0]*dy)*k;  // screen-down (dy>0) = −up
+    lig.y += (b.right[1]*dx - b.up[1]*dy)*k;
+    lig.z += (b.right[2]*dx - b.up[2]*dy)*k;
+    e.preventDefault(); e.stopPropagation(); return;
+  }
+  if(rotatingLig){
+    const dx=e.clientX-lastLX, dy=e.clientY-lastLY;
+    lastLX=e.clientX; lastLY=e.clientY;
+    lig.ry -= dx*0.01; lig.rx += dy*0.01;   // trackball: horizontal drag = yaw, vertical drag = pitch
+    e.preventDefault(); e.stopPropagation(); return;
+  }
+}, true);
+window.addEventListener('mouseup', e=>{
+  if(panning){ panning=false; e.stopPropagation(); }
+  if(draggingLig||rotatingLig){ draggingLig=rotatingLig=false; el('viewer').style.cursor='grab'; e.stopPropagation(); }
+}, true);
+// don't pop the context menu when right-dragging to rotate the molecule
+el('viewer').addEventListener('contextmenu', e=>e.preventDefault());
+// grab-cursor affordance: shows the molecule is draggable when you hover it
+el('viewer').addEventListener('mousemove', e=>{
+  if(infoMode || panning || draggingLig || rotatingLig) return;
+  const r=el('viewer').getBoundingClientRect();
+  el('viewer').style.cursor = ligHit(e.clientX-r.left, e.clientY-r.top) ? 'grab' : '';
+});
 
 /* ---------- STUDY MODE: what each part does ---------- */
 // HOTSPOTS (frequent cancer mutations) are per-level — set from LEVEL.hotspots on load.
@@ -752,6 +969,8 @@ function restoreNormal(){
   viewer.setStyle({}, {cartoon:{color:'spectrum'}});
   viewer.setStyle({resn:DNA_RESN}, {cartoon:{color:'spectrum'}});
   viewer.setStyle({hetflag:true}, {sphere:{scale:0.4, color:'magenta'}});
+  viewer.setStyle({resn:['HOH','WAT']}, {});   // keep water hidden in gameplay
+  viewer.setStyle(METAL_SEL, {sphere:{scale:0.6, color:'#ffcc33'}});   // structural metal ions stay gold
   removeProteinSurface();
   addProteinSurface(0.55);
   curHi=null; prevHi=null; focused=false;
@@ -804,6 +1023,23 @@ function clearHi(){
   if(focused || prevHi){ prevHi=null; curHi=null; focused=false; brightScene(); }
 }
 
+// study mode wipes gameplay overlays, so it needs its OWN persistent target marker + label
+// (otherwise you can't tell which atom — e.g. the gold zinc — is the docking target).
+let studyTargetLabel = null;
+function addStudyTarget(){
+  if(!pocket) return;
+  viewer.addSphere({center:pocket, radius:1.7, color:'#39ff14', opacity:0.25});   // halo, non-pickable
+  studyTargetLabel = viewer.addLabel('◎ ЦЕЛЬ стыковки — наведи, чтобы узнать', {
+    position:{x:pocket.x, y:pocket.y+12, z:pocket.z},
+    backgroundColor:'#04220a', backgroundOpacity:0.8,
+    fontColor:'#39ff14', fontSize:12, borderThickness:1.4, borderColor:'#39ff14',
+    inFront:true, alignment:'bottomCenter'
+  });
+  viewer.render();
+}
+function removeStudyTarget(){
+  if(studyTargetLabel){ viewer.removeLabel(studyTargetLabel); studyTargetLabel=null; }
+}
 function setInfoMode(on){
   infoMode=on; hoverInfo=null;
   el('btnInfo').textContent = on ? '🔎 ИЗУЧЕНИЕ: ВКЛ' : '🔎 ИЗУЧЕНИЕ';
@@ -814,12 +1050,17 @@ function setInfoMode(on){
     viewer.removeAllShapes(); viewer.removeAllLabels();  // clear leftover gameplay ligand/target
     resetLabels();  // labels were wiped — drop cached refs so draw() recreates them on exit
     dimAll();
+    addStudyTarget();   // keep the docking target identifiable while studying
   } else {
+    removeStudyTarget();
     restoreNormal(); hideTip();
   }
-  showToast(on ? '🔎 Наведи курсор на белок, цинк или ДНК' : 'Режим изучения выключен');
+  showToast(on ? '🔎 Наведи курсор на цель, белок, цинк или ДНК' : 'Режим изучения выключен');
 }
-el('btnInfo').onclick = ()=> setInfoMode(!infoMode);
+el('btnInfo').onclick = ()=>{
+  if(!LEVEL && !infoMode){ showToast('Сначала выбери мишень — 🗂 УРОВНИ'); return; }
+  setInfoMode(!infoMode);
+};
 
 // custom nearest-atom picking under the cursor (via 3D→screen projection).
 // PRIMARY criterion is proximity to the cursor on screen, so we always highlight the
@@ -910,30 +1151,76 @@ el('viewer').addEventListener('mousemove', e=>{
 });
 el('viewer').addEventListener('mouseleave', ()=>{ hoverInfo=null; clearHi(); hideTip(); });
 
-/* ---------- "DRUG TEST" → score calculation ---------- */
+/* ---------- "SHOW SOLUTION" hint: a blinking ghost of the ideal pose ---------- */
+function syncSolveBtn(){
+  el('btnSolve').textContent = showSolution ? '💡 ПОДСКАЗКА: ВКЛ' : '💡 ПОДСКАЗКА';
+  el('btnSolve').classList.toggle('b-dock', showSolution);
+  el('btnSolve').classList.toggle('b-ghost', !showSolution);
+}
+el('btnSolve').onclick = ()=>{
+  if(!pocket){ showToast('Сначала выбери мишень — 🗂 УРОВНИ'); return; }
+  showSolution = !showSolution;
+  if(showSolution){
+    if(!solutionPose) solutionPose = solveBestPose();   // compute once per level, then cache
+    showToast('💡 Полупрозрачная мигающая молекула — идеальное положение. Повтори её позу и поворот своим лекарством.', 4200);
+  }
+  syncSolveBtn();
+};
+syncSolveBtn();
+
+/* ---------- "DRUG TEST" → score calculation ----------
+   Two engines (toggle with the 🧪 engine button):
+     • 'learn' — the shape-contact model, computed in-browser: instant, offline, for learning.
+     • 'vina'  — real AutoDock Vina on the Python backend: scientifically meaningful, but needs
+                 the server running with `vina` installed + a receptor .pdbqt for the level.
+                 If it's not available we say so and fall back to the learning model. */
 const API = 'http://localhost:8000/dock';
-// fallback in-browser calculation if the server is down: closer to the pocket → better
-function localAffinity(d){ return Math.max(-11, Math.min(-1, -11 + d*0.38)); }
+let engine = localStorage.getItem('pd_engine')==='vina' ? 'vina' : 'learn';
+function syncEngineBtn(){
+  el('btnEngine').textContent = engine==='vina' ? '🧪 РАСЧЁТ: VINA' : '🧪 РАСЧЁТ: ОБУЧЕНИЕ';
+  el('btnEngine').classList.toggle('b-dock', engine==='vina');
+  el('btnEngine').classList.toggle('b-ghost', engine!=='vina');
+}
+el('btnEngine').onclick = ()=>{
+  engine = engine==='vina' ? 'learn' : 'vina';
+  localStorage.setItem('pd_engine', engine);
+  syncEngineBtn();
+  showToast(engine==='vina'
+    ? '🧪 Режим VINA: настоящий докинг на сервере (нужен запущенный backend с установленной Vina)'
+    : '🧪 Режим ОБУЧЕНИЕ: упрощённая модель формы — мгновенно и без сервера', 3600);
+};
+syncEngineBtn();
 
 el('btnDock').onclick = async ()=>{
+  if(!pocket){ showToast('Сначала выбери мишень — 🗂 УРОВНИ'); return; }
   const {mind, world} = minDistance(0);
   const btn=el('btnDock'), old=btn.textContent;
   btn.disabled=true; btn.textContent='⏳ СЧИТАЕМ…';
 
-  let affinity, source='браузер';
-  try{
-    const res = await fetch(API, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        ligand: world.map(w=>({x:w.x, y:w.y, z:w.z})),
-        center: [pocket.x, pocket.y, pocket.z]
-      })
-    });
-    if(!res.ok) throw 0;
-    affinity = (await res.json()).affinity;
-    source = 'Python-сервер';
-  }catch(e){
-    affinity = localAffinity(mind);   // server is down — compute locally
+  let affinity, source;
+  if(engine==='vina'){
+    try{
+      const res = await fetch(API, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          engine:'vina', receptor: LEVEL.pdb,
+          ligand: world.map(w=>({x:w.x, y:w.y, z:w.z})),
+          center: [pocket.x, pocket.y, pocket.z],
+          pocket_atoms: POCKET_ATOMS
+        })
+      });
+      if(!res.ok){ let d=''; try{ d=(await res.json()).detail||''; }catch(_){}
+        throw new Error(d || ('HTTP '+res.status)); }
+      affinity = (await res.json()).affinity;
+      source = 'AutoDock Vina';
+    }catch(e){
+      affinity = fitEnergy(world).affinity;   // Vina unavailable → learning model, and say so
+      source = 'обучающая модель (Vina недоступна)';
+      showToast('⚠ Vina недоступна ('+(e.message||'нет связи с сервером')+') — считаю обучающей моделью', 3800);
+    }
+  } else {
+    affinity = fitEnergy(world).affinity;      // learning mode: instant, in-browser
+    source = 'обучающая модель';
   }
   const pts = Math.round(-affinity*1000);
   btn.disabled=false; btn.textContent=old;
@@ -966,6 +1253,7 @@ el('btnDock').onclick = async ()=>{
 };
 
 el('btnReset').onclick = ()=>{
+  if(!pocket){ showToast('Сначала выбери мишень — 🗂 УРОВНИ'); return; }
   lig.x=pocket.x+26; lig.y=pocket.y+14; lig.z=pocket.z+22;
   lig.rx=lig.ry=lig.rz=0; score=0; el('scoreVal').textContent='0';
 };
@@ -1046,7 +1334,7 @@ function loadLeaderboard(){
 /* ---------- TUTORIAL (onboarding) ----------
    Two decks: ABOUT_STEPS explains WHAT/WHY (the lock-and-key metaphor + the real point),
    HOW_STEPS explains the controls. First visit shows both back-to-back; the two buttons
-   («О ЧЁМ ИГРА» / «КАК ИГРАТЬ») each reopen just their own deck. */
+   ("About the game" / "How to play") each reopen just their own deck. */
 const ABOUT_STEPS = [
   { icon:'🔒', title:'Что такое рак — простыми словами',
     body:`Представь <span class="hl">сломанный механизм</span> внутри клетки: он застрял в режиме «включено» и заставляет клетку делиться без остановки. Это и есть рак.<br><br>
@@ -1064,11 +1352,11 @@ const HOW_STEPS = [
     body:`Голубая молекула с подписью <span class="hlc">«ТВОЁ ЛЕКАРСТВО»</span> — это <b>молекула-кандидат в лекарство</b> (крошечное вещество, которым лечат). В игре это твой ключ, им ты управляешь.<br><br>
           <span class="hl">Зелёный пульсирующий маркер со стрелкой «◎ ЦЕЛЬ»</span> — это карман белка («выключатель»). Веди ключ прямо в него.<br><br>
           Карман <b>не случаен</b>: на каждом уровне это реальное уязвимое место конкретного ракового белка (например, цинковый сайт p53 или карман, куда садится настоящее лекарство). Уровни выбираются кнопкой <span class="hlc">🗂 УРОВНИ</span>.` },
-  { icon:'🎮', title:'Управление ключом',
-    body:`<b>Двигать:</b> <kbd>←</kbd><kbd>↑</kbd><kbd>→</kbd><kbd>↓</kbd> — по экрану, <kbd>W</kbd>/<kbd>S</kbd> — ближе/дальше.<br>
-          <b>Вращать:</b> <kbd>Q</kbd>/<kbd>E</kbd> · <kbd>A</kbd>/<kbd>D</kbd> · <kbd>Z</kbd>/<kbd>C</kbd>.<br><br>
-          Камеру крути <b>мышью</b>, приближай <b>колесом</b>, сдвигай <kbd>Shift</kbd>+<b>мышь</b>.<br><br>
-          Пунктирная линия ведёт от ключа к цели, а шкала внизу идёт красный → жёлтый → <span class="hl">ЗЕЛЁНЫЙ = В КАРМАНЕ</span> (и звучит «дзинь»).` },
+  { icon:'🎮', title:'Управление ключом — просто мышью',
+    body:`<b>Двигать:</b> <span class="hlc">схвати молекулу мышью и тащи</span> по экрану. Колесо над ней — <b>глубже/ближе</b>.<br>
+          <b>Вращать:</b> <span class="hlc">правый клик + тащи</span> — и молекула поворачивается.<br><br>
+          Сначала <span class="hl">подведи</span> ключ к зелёной метке, потом <span class="hl">поворачивай</span>, пока он не ляжет плотно (шкала: красный → жёлтый → <span class="hl">ЗЕЛЁНЫЙ = ПЛОТНО СЕЛ</span>, звучит «дзинь»).<br><br>
+          <span style="color:#9db8e0">Камеру крути, таща <b>фон</b>; сдвигай <kbd>Shift</kbd>+мышь. Клавиши тоже работают: <kbd>W</kbd>/<kbd>S</kbd>, <kbd>Q E A D Z C</kbd>.</span>` },
   { icon:'🏆', title:'Проверь ключ и побеждай',
     body:`Когда шкала <span class="hl">зелёная</span>, жми <span class="hlc">«▶ ТЕСТ ЛЕКАРСТВА»</span>. Получишь <b>энергию связывания</b> (ккал/моль) — насколько крепко ключ прилип.<br><br>
           <span class="hl">Чем больше минус</span> (например −9.5), тем сильнее держится и тем больше очков, салют 🎆 и место в таблице лидеров!<br><br>
@@ -1086,7 +1374,7 @@ function renderTut(){
 }
 function openTut(steps){ curSteps=steps; tstep=0; renderTut(); el('tut').classList.add('show'); }
 function closeTut(){ el('tut').classList.remove('show'); localStorage.setItem('pd_seen','1');
-  if(!LEVEL) openLevels(); }   // after the intro, pick a target
+  if(!LEVEL) loadLevel(defaultLevelIdx()); }   // after the intro, drop straight into the default level
 el('tutNext').onclick = ()=>{ tstep<curSteps.length-1 ? (tstep++, renderTut()) : closeTut(); };
 el('tutPrev').onclick = ()=>{ if(tstep>0){tstep--; renderTut();} };
 el('tutSkip').onclick = closeTut;
@@ -1098,7 +1386,7 @@ el('btnHelp').onclick  = ()=> openTut(HOW_STEPS);
    ----------------------------------------------------------
    Progress is stored per level in localStorage:
      pd_levels = { <id>: { attempted, solved, best } }
-   • best   — best (most negative) binding energy seen, ккал/моль
+   • best   — best (most negative) binding energy seen, kcal/mol
    • solved — a normal target docked while inside the pocket
    • open levels are never "solved"; they only track attempted + best.
    A level is unlocked once the PREVIOUS one is solved (normal) or
@@ -1167,7 +1455,10 @@ function renderLevels(){
 function openLevels(){ renderLevels(); el('levels').classList.add('show'); }
 function closeLevels(){ el('levels').classList.remove('show'); }
 el('btnLevels').onclick   = ()=> openLevels();
-el('levelsClose').onclick = ()=>{ if(LEVEL) closeLevels(); else showToast('Выбери мишень, чтобы начать'); };
+el('levelsClose').onclick = ()=>{
+  closeLevels();                       // the ✕ always closes the picker
+  if(!LEVEL) showToast('Открой 🗂 УРОВНИ, когда будешь готов выбрать мишень', 2600);
+};
 
 init();
 </script>
