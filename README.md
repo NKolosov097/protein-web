@@ -2,9 +2,31 @@
 
 **▶️ [Играть онлайн](https://NKolosov097.github.io/protein-web/)**
 
-A browser game featuring the real **p53 protein (PDB 1TUP)** rendered in 3D. You steer a
-small drug-like molecule toward the protein's functional pocket; the game measures the
-contact, awards points, and celebrates with sound and fireworks.
+A browser game featuring **real cancer-target proteins** (loaded live from the PDB) rendered
+in 3D. You steer a small drug-like molecule toward each protein's functional pocket; the game
+measures the contact, awards points, and celebrates with sound and fireworks.
+
+## Levels (🗂 УРОВНИ)
+
+Six real targets. Pick one from the **🗂 УРОВНИ** screen; each solved *druggable* target gets a
+✔ and unlocks the next druggable one. The two **open problems** — proteins with *no known drug
+yet* — are **unlocked from the start** and are never "solved": there is no reference answer to
+beat, only your personal best (framed as a real contribution to unsolved science).
+
+| # | Target | PDB | Pocket | Status |
+|---|---|---|---|---|
+| 1 | p53 — "guardian of the genome" | 1TUP | zinc site (Zn²⁺) | ✔ druggable |
+| 2 | BCR-ABL | 2HYY | imatinib (Gleevec®) site | ✔ druggable |
+| 3 | EGFR | 1M17 | erlotinib (Tarceva®) site | ✔ druggable |
+| 4 | KRAS G12C | 6OIM | sotorasib (AMG 510) site, 2021 | ✔ druggable |
+| 5 | MYC | 1NKP | protein surface | 🔬 **open problem** |
+| 6 | RAS (wild type) | 5P21 | nucleotide site | 🔬 **open problem** |
+
+The docking pocket is found automatically per level: an explicit ion (p53's zinc), or the
+largest **bound ligand** in the crystal — i.e. the *actual real drug* — skipping common
+cofactors/ions (GDP, Mg²⁺, water…). For the open targets, which carry no drug, the pocket
+falls back to the protein's centre / nucleotide site. To add or change a level, edit the
+`LEVELS` array near the top of the `<script>` in `index.html` (just a 4-letter PDB code).
 
 ## Running it (Stages 1 & 2 — ready to play)
 
