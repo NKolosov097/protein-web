@@ -1,6 +1,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PROTEIN DOCKER — p53 (1TUP)</title>
+<title>PROTEIN DOCKER</title>
 <style>
   :root{
     --bg:#05060f; --panel:rgba(10,14,30,.72); --line:#1b2550;
@@ -103,15 +103,45 @@
     background:#160a2e;border:1px solid var(--violet);color:#e8ccff;
     font-size:13px;line-height:1.5;pointer-events:none;
     box-shadow:0 0 18px rgba(161,91,255,.35)}
+
+  /* ---------- level select ---------- */
+  #levels{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;
+    background:rgba(2,4,12,.82);backdrop-filter:blur(5px)}
+  #levels.show{display:flex}
+  #levelsCard{width:min(880px,94vw);max-height:90vh;overflow:auto;padding:26px 28px;border-radius:18px;position:relative;
+    background:linear-gradient(160deg,#0b1230,#0a0e22);border:1px solid #2a3a74;
+    box-shadow:0 0 50px rgba(33,224,255,.22),inset 0 0 30px rgba(20,40,90,.5)}
+  #levelsClose{position:absolute;top:14px;right:18px;font-size:16px;color:#6f8bbf;cursor:pointer;letter-spacing:1px}
+  #levelsClose:hover{color:var(--cyan)}
+  #levelsTitle{font-size:20px;font-weight:800;margin:0 0 6px;letter-spacing:2px;
+    background:linear-gradient(90deg,var(--cyan),var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .lvSub{font-size:12.5px;color:#9db8e0;margin-bottom:18px;line-height:1.55}
+  .lvSub b{color:var(--cyan)} .lvSub i{color:var(--violet);font-style:normal}
+  #levelGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+  .lvCard{border:1px solid var(--line);border-radius:14px;padding:14px 16px;cursor:pointer;
+    background:#0c1430;transition:transform .1s, box-shadow .2s, border-color .2s;min-height:124px;display:flex;flex-direction:column}
+  .lvCard:hover{transform:translateY(-2px)}
+  .lvTop{display:flex;justify-content:space-between;align-items:center}
+  .lvNum{font-size:12px;color:#6f8bbf;letter-spacing:2px}
+  .lvBadge{font-size:20px;line-height:1}
+  .lvName{font-size:19px;font-weight:800;color:#eaf4ff;margin-top:6px;letter-spacing:.5px}
+  .lvTag{font-size:11.5px;color:var(--cyan);margin-top:3px;min-height:15px}
+  .lvFoot{font-size:11.5px;color:#9db8e0;margin-top:auto;padding-top:10px;line-height:1.4}
+  .lv-done{border-color:rgba(57,255,20,.5);box-shadow:0 0 18px rgba(57,255,20,.12)}
+  .lv-done .lvName{color:var(--green)} .lv-done .lvFoot{color:#8ef08a}
+  .lv-open{border-color:rgba(161,91,255,.55);box-shadow:0 0 18px rgba(161,91,255,.14)}
+  .lv-open .lvTag{color:var(--violet)}
+  .lv-todo:hover{border-color:var(--cyan);box-shadow:0 0 18px rgba(33,224,255,.18)}
+  .lv-lock{opacity:.5;cursor:not-allowed} .lv-lock:hover{transform:none}
 </style>
 
 <div id="viewer"></div>
 
-<div id="load"><div class="spin"></div><div>ЗАГРУЗКА СТРУКТУРЫ p53 · 1TUP…</div></div>
+<div id="load"><div class="spin"></div><div id="loadTxt">ЗАГРУЗКА СТРУКТУРЫ…</div></div>
 
 <div id="hdr" class="panel">
   <h1>PROTEIN&nbsp;DOCKER</h1>
-  <div class="sub">TARGET: p53 · PDB 1TUP · «страж генома»</div>
+  <div class="sub" id="hdrSub">МИШЕНЬ: —</div>
 </div>
 
 <div id="score" class="panel">
@@ -147,6 +177,7 @@
 
 <div id="actions" class="panel">
   <button class="b-dock" id="btnDock">▶ ТЕСТ ЛЕКАРСТВА</button>
+  <button class="b-ghost" id="btnLevels">🗂 УРОВНИ</button>
   <button class="b-ghost" id="btnSound">🔇 ЗВУК: ВЫКЛ</button>
   <button class="b-ghost" id="btnInfo">🔎 ИЗУЧЕНИЕ</button>
   <button class="b-ghost" id="btnReset">↺ СБРОС</button>
@@ -167,6 +198,17 @@
         <button class="b-dock" id="tutNext">Далее ▶</button>
       </div>
     </div>
+  </div>
+</div>
+
+<div id="levels">
+  <div id="levelsCard">
+    <div id="levelsClose">ЗАКРЫТЬ ✕</div>
+    <h2 id="levelsTitle">🎯 ВЫБЕРИ РАКОВУЮ МИШЕНЬ</h2>
+    <div class="lvSub">Каждый уровень — <b>настоящий</b> раковый белок из базы PDB.
+      <b>✔</b> — мишени, к которым лекарство уже подобрали (повтори успех учёных).
+      <i>🔬</i> — мишени, к которым лекарства <i>ещё нет ни у кого</i>: они <i>открыты сразу</i>, тут нет «правильного ответа», любой твой результат — вклад в реальный поиск.</div>
+    <div id="levelGrid"></div>
   </div>
 </div>
 
@@ -203,53 +245,192 @@ const LIG_LOCAL = [
 
 let score = 0, best = 0, breath = 0;
 
+/* ============================================================
+   УРОВНИ — реальные раковые мишени из PDB.
+   Каждая структура грузится по своему 4-символьному коду PDB
+   (как раньше грузился p53 · 1TUP). Если какой-то код не
+   подгрузится, игра покажет ошибку и вернёт к выбору уровня —
+   тогда достаточно поправить поле `pdb` ниже.
+
+   pocket: как найти «карман» (цель для стыковки):
+     {type:'elem', value:'ZN'}  — по химическому элементу (ион);
+     {type:'resn', value:'STI'} — по имени остатка/лиганда;
+     {type:'auto'}              — автоматически: самый крупный
+                                  связанный лиганд (реальное лекарство
+                                  в кристалле), иначе центр белка.
+   open:true  — «открытая задача»: лекарства ещё нет, эталона нет,
+                уровень никогда не помечается «пройдено».
+   ============================================================ */
+// «горячие точки» p53 (частые раковые мутации) — только для 1-го уровня
+const P53_HOTSPOTS = {
+  175:'Arg175 — САМАЯ частая раковая мутация p53. Держит укладку домена у цинка.',
+  176:'Cys176 — удерживает ион цинка (структурный центр).',
+  179:'His179 — координирует цинк.',
+  238:'Cys238 — координирует цинк.',
+  242:'Cys242 — координирует цинк.',
+  245:'Gly245 — горячая точка мутаций, критична для укладки белка.',
+  248:'Arg248 — НАПРЯМУЮ читает ДНК в большой бороздке. Частая мутация в раке.',
+  249:'Arg249 — структурная горячая точка (часто мутирует при раке печени).',
+  273:'Arg273 — ключевой контакт с остовом ДНК. Одна из главных раковых мутаций.',
+  282:'Arg282 — стабилизирует ДНК-связывающую поверхность.',
+};
+const LEVELS = [
+  { id:'p53', name:'p53', pdb:'1TUP', sub:'«страж генома»', open:false,
+    drug:null, pocket:{type:'elem', value:'ZN', label:'КАРМАН (Zn)'},
+    hotspots:P53_HOTSPOTS,
+    blurb:'p53 сломан более чем в половине всех опухолей. Цель — структурный ион цинка (Zn²⁺), на котором держится укладка белка.' },
+
+  { id:'bcrabl', name:'BCR-ABL', pdb:'2HYY', sub:'иматиниб · Гливек®', open:false,
+    drug:'Иматиниб (Гливек®)', pocket:{type:'auto', label:'КАРМАН (сайт иматиниба)'},
+    blurb:'Слитый белок BCR-ABL «залипает» во включённом состоянии и вызывает лейкоз. Гливек садится в его АТФ-карман — первый громкий успех точечной терапии. Карман показан по реальному лекарству в структуре.' },
+
+  { id:'egfr', name:'EGFR', pdb:'1M17', sub:'эрлотиниб · Тарцева®', open:false,
+    drug:'Эрлотиниб (Тарцева®)', pocket:{type:'auto', label:'КАРМАН (сайт эрлотиниба)'},
+    blurb:'Мутантный EGFR гонит клетки лёгкого делиться без остановки. Эрлотиниб блокирует его киназный карман. Цель — по реальной молекуле лекарства в структуре 1M17.' },
+
+  { id:'kras_g12c', name:'KRAS G12C', pdb:'6OIM', sub:'соторасиб · 2021', open:false,
+    drug:'Соторасиб (AMG 510)', pocket:{type:'auto', label:'КАРМАН (сайт соторасиба)'},
+    blurb:'KRAS 40 лет считался «недоступным». В 2021-м соторасиб впервые связал мутант G12C — настоящий прорыв. Карман — по реальному лиганду в структуре.' },
+
+  // ---------- ОТКРЫТЫЕ ЗАДАЧИ: лекарства ещё нет ни у кого ----------
+  { id:'myc', name:'MYC', pdb:'1NKP', sub:'🔬 открытая задача', open:true,
+    drug:null, pocket:{type:'auto', label:'ПОВЕРХНОСТЬ MYC'},
+    blurb:'MYC разгоняет рост огромного числа опухолей, но у него нет удобного кармана — прямого лекарства не существует до сих пор. Это «святой Грааль» онкологии. Эталона нет: любой твой результат — поиск на переднем крае науки.' },
+
+  { id:'ras_wt', name:'RAS (дикий тип)', pdb:'5P21', sub:'🔬 открытая задача', open:true,
+    drug:null, pocket:{type:'auto', label:'ПОВЕРХНОСТЬ RAS'},
+    blurb:'Обычный (немутантный) RAS из семейства KRAS/HRAS — гладкий и «скользкий», зацепиться почти негде. Большинство форм RAS до сих пор недоступны для лекарств. Эталона нет: ищи, куда «прицепить» ключ.' },
+];
+let LEVEL = null, LEVEL_IDX = 0, gen = 0, POCKET_LABEL = 'КАРМАН';
+let HOTSPOTS = {};   // per-level cancer-mutation hotspots (set on load)
+
 // standard residues — everything else (except water) is treated as hetero (ion / small molecule)
 const AA_RESN = new Set('ALA ARG ASN ASP CYS GLN GLU GLY HIS ILE LEU LYS MET PHE PRO SER THR TRP TYR VAL MSE SEC'.split(' '));
 const DNA_RESN = ['DA','DC','DG','DT','A','C','G','T','U','DU'];
 
-/* ---------- 3Dmol init + protein loading ---------- */
+/* ---------- 3Dmol init ---------- */
 function init(){
   viewer = $3Dmol.createViewer("viewer", { backgroundColor:0x05060f });
+  el('load').style.display='none';     // nothing is loading until a level is picked
+  loadLeaderboard();
+  // first visit → the full story (concept + controls), then the level picker;
+  // otherwise go straight to the level picker.
+  if(!localStorage.getItem('pd_seen')) openTut(ABOUT_STEPS.concat(HOW_STEPS));
+  else openLevels();
+}
 
-  $3Dmol.download("pdb:1TUP", viewer, {}, function(model){
-    // STAGE 1: nice translucent surface + cartoon structure
-    viewer.setStyle({}, { cartoon:{ color:'spectrum' } });
-    addProteinSurface(0.55);
+/* ---------- load a chosen level (PDB structure) ---------- */
+let loadTimer = null;
+function loadLevel(i){
+  LEVEL_IDX = i; LEVEL = LEVELS[i];
+  const myGen = ++gen;                 // invalidate any running animation loop / pending load
+  closeLevels(); hideTip();
+  if(infoMode) setInfoMode(false);     // study mode off when switching targets
 
-    // zinc / hetero atoms — as neon spheres
-    viewer.setStyle({ hetflag:true }, { sphere:{ scale:0.4, color:'magenta' } });
+  // wipe the previous structure and gameplay overlays
+  try{ viewer.removeAllModels(); }catch(e){}
+  try{ viewer.removeAllSurfaces(); }catch(e){}
+  viewer.removeAllShapes(); viewer.removeAllLabels(); resetLabels();
+  proteinAtoms = []; hoverAtoms = []; pocket = null; wasInPocket = false;
 
-    // collect protein atom coordinates for distance calculations
-    const atoms = model.selectedAtoms({});
-    proteinAtoms = atoms.map(a => {
-      const rn=(a.resn||'').toUpperCase();
-      const het = a.hetflag || !(AA_RESN.has(rn) || DNA_RESN.includes(rn));
-      return {x:a.x, y:a.y, z:a.z, resn:a.resn, resi:a.resi, chain:a.chain, elem:a.elem,
-        het, ion: het && rn!=='HOH'};   // ion = hetero but not water
-    });
-    hoverAtoms = proteinAtoms;           // hovering is allowed on everything, including water
-    buildChainStats();                   // per-chain residue counts for the "whole ribbon" tooltip
+  // HUD / title reflect the current target
+  document.title = 'PROTEIN DOCKER — ' + LEVEL.name + ' (' + LEVEL.pdb + ')';
+  el('hdrSub').textContent = 'МИШЕНЬ: ' + LEVEL.name + ' · PDB ' + LEVEL.pdb + ' · ' + LEVEL.sub;
+  el('mission').innerHTML = LEVEL.open
+    ? '🔬 <b>Открытая задача:</b> лекарства ещё нет ни у кого — ищи, куда «прицепить» ключ на белке <b>' + LEVEL.name + '</b>'
+    : '🎯 <b>Задача:</b> приведи молекулу-ключ в зелёный карман и заткни «выключатель» рака';
+  score = 0; el('scoreVal').textContent = '0';
 
-    // target "pocket" = zinc ion (a real functional site of p53).
-    // If it is absent, fall back to the protein centroid.
-    const zn = atoms.find(a => (a.elem||'').toUpperCase()==='ZN' || (a.resn||'').toUpperCase()==='ZN');
-    pocket = zn ? {x:zn.x, y:zn.y, z:zn.z} : centroid(proteinAtoms);
+  // loading screen + a safety timeout so a bad/absent PDB id is recoverable
+  el('loadTxt').textContent = 'ЗАГРУЗКА СТРУКТУРЫ ' + LEVEL.name + ' · ' + LEVEL.pdb + '…';
+  el('load').style.display = 'flex';
+  clearTimeout(loadTimer);
+  loadTimer = setTimeout(()=>{ if(myGen===gen && !proteinAtoms.length) levelLoadError(); }, 18000);
 
-    // ligand starts outside so the player guides it toward the target
-    lig.x = pocket.x + 26; lig.y = pocket.y + 14; lig.z = pocket.z + 22;
-
-    viewer.zoomTo();
-    viewer.zoom(0.9);
-    viewer.render();
-
-    el('load').style.display='none';
-    loadLeaderboard();
-    animate();               // loop: ligand "breathing" + recompute
-    maybeTutorial();         // show the tutorial on first visit
-  }, function(err){
-    el('load').innerHTML = '⚠ Не удалось загрузить 1TUP из PDB.<br>Проверьте интернет и обновите страницу.';
+  $3Dmol.download('pdb:' + LEVEL.pdb, viewer, {}, function(model){
+    if(myGen !== gen) return;          // a newer level started while this was downloading
+    let atoms = [];
+    try{ atoms = model ? model.selectedAtoms({}) : []; }catch(e){}
+    if(!atoms.length){ levelLoadError(); return; }
+    clearTimeout(loadTimer);
+    onModelLoaded(atoms, myGen);
   });
 }
+
+function levelLoadError(){
+  clearTimeout(loadTimer);
+  el('load').style.display='none';
+  showToast('⚠ Не удалось загрузить ' + (LEVEL ? LEVEL.pdb : '') + ' из PDB. Проверь интернет.', 3200);
+  openLevels();
+}
+
+// build the scene once a structure's atoms are in
+function onModelLoaded(atoms, myGen){
+  // STAGE 1 look: translucent surface + cartoon + neon hetero spheres
+  viewer.setStyle({}, { cartoon:{ color:'spectrum' } });
+  addProteinSurface(0.55);
+  viewer.setStyle({ hetflag:true }, { sphere:{ scale:0.4, color:'magenta' } });
+
+  // collect atom coordinates for distance / picking
+  proteinAtoms = atoms.map(a => {
+    const rn=(a.resn||'').toUpperCase();
+    const het = a.hetflag || !(AA_RESN.has(rn) || DNA_RESN.includes(rn));
+    return {x:a.x, y:a.y, z:a.z, resn:a.resn, resi:a.resi, chain:a.chain, elem:a.elem,
+      het, ion: het && rn!=='HOH'};   // ion = hetero but not water
+  });
+  hoverAtoms = proteinAtoms;
+  buildChainStats();
+  HOTSPOTS = LEVEL.hotspots || {};
+
+  // target pocket per level (ion / named ligand / auto-detected drug / centroid)
+  const pk = findPocket(proteinAtoms);
+  pocket = pk.pos; POCKET_LABEL = pk.label;
+
+  // ligand starts outside so the player guides it toward the target
+  lig.x = pocket.x + 26; lig.y = pocket.y + 14; lig.z = pocket.z + 22;
+  lig.rx = lig.ry = lig.rz = 0;
+
+  viewer.zoomTo(); viewer.zoom(0.9); viewer.render();
+  el('load').style.display='none';
+  animate(myGen);            // loop: ligand "breathing" + recompute
+}
+
+/* find the docking target for the current level */
+function findPocket(atoms){
+  const U = s => (s||'').toUpperCase();
+  const strat = (LEVEL && LEVEL.pocket) || {type:'auto'};
+  const label = strat.label || 'КАРМАН';
+
+  if(strat.type==='elem'){
+    const a = atoms.find(x => U(x.elem)===strat.value || U(x.resn)===strat.value);
+    if(a) return {pos:{x:a.x,y:a.y,z:a.z}, label};
+  }
+  if(strat.type==='resn'){
+    const sel = atoms.filter(x => U(x.resn)===strat.value);
+    if(sel.length) return {pos:centroid(sel), label};
+  }
+  // auto: the bound drug = the largest hetero group that is not water / a common cofactor
+  const groups = {};
+  atoms.forEach(a=>{
+    if(!a.het) return;
+    const rn=U(a.resn); if(rn==='HOH'||rn==='WAT') return;
+    const k = a.chain+'|'+a.resi+'|'+rn;
+    (groups[k] = groups[k] || {n:0, pts:[], rn});
+    groups[k].n++; groups[k].pts.push(a);
+  });
+  const keys = Object.keys(groups);
+  if(keys.length){
+    const uncommon = keys.filter(k => !COMMON_HET.has(groups[k].rn));
+    const pool = (uncommon.length ? uncommon : keys).sort((a,b)=>groups[b].n-groups[a].n);
+    return {pos:centroid(groups[pool[0]].pts), label};
+  }
+  // no ligand → centroid of the protein itself
+  const prot = atoms.filter(a=>!a.het);
+  return {pos:centroid(prot.length?prot:atoms), label};
+}
+// common cofactors / ions / crystallization additives — skipped when auto-picking the drug
+const COMMON_HET = new Set(('HOH WAT GDP GTP GNP GSP GCP GPP GDP MG MN NA CL K CA ZN FE CU NI ' +
+  'SO4 PO4 PO3 EDO GOL ACT DMS PEG BME MES EPE TRS FMT NO3 CO3 IOD BR ATP ADP AMP NAD FAD NAG BMA MAN').split(' '));
 
 /* ---------- geometry ---------- */
 function centroid(arr){
@@ -299,7 +480,7 @@ let targetLabel=null, ligLabel=null, lastLigLabelPos='';
 function syncLabels(){
   // target ("◎ ЦЕЛЬ: КАРМАН") — static, so create it a single time
   if(!targetLabel){
-    targetLabel = viewer.addLabel("◎ ЦЕЛЬ: КАРМАН (Zn)", {
+    targetLabel = viewer.addLabel("◎ ЦЕЛЬ: " + POCKET_LABEL, {
       position:{x:pocket.x, y:pocket.y+12, z:pocket.z},
       backgroundColor:'#04220a', backgroundOpacity:0.75,
       fontColor:'#39ff14', fontSize:12, borderThickness:1.4, borderColor:'#39ff14',
@@ -393,11 +574,13 @@ function quality(d){
 }
 
 /* ---------- animation loop ("living", breathing molecule) ---------- */
-let raf;
-function animate(){
+// myGen ties the loop to the level it started for; switching levels bumps `gen`
+// so any older loop stops on its next tick (prevents overlapping renders).
+function animate(myGen){
+  if(myGen !== gen) return;
   breath += 0.06;
   draw(breath);
-  raf = requestAnimationFrame(()=>setTimeout(animate, 45)); // ~20 fps
+  requestAnimationFrame(()=>setTimeout(()=>animate(myGen), 45)); // ~20 fps
 }
 
 /* ---------- keyboard controls ---------- */
@@ -480,19 +663,7 @@ window.addEventListener('mousemove', e=>{
 window.addEventListener('mouseup', e=>{ if(panning){ panning=false; e.stopPropagation(); } }, true);
 
 /* ---------- STUDY MODE: what each part does ---------- */
-// "hotspots" (frequent cancer mutations) and functional residues of p53
-const HOTSPOTS = {
-  175:'Arg175 — САМАЯ частая раковая мутация p53. Держит укладку домена у цинка.',
-  176:'Cys176 — удерживает ион цинка (структурный центр).',
-  179:'His179 — координирует цинк.',
-  238:'Cys238 — координирует цинк.',
-  242:'Cys242 — координирует цинк.',
-  245:'Gly245 — горячая точка мутаций, критична для укладки белка.',
-  248:'Arg248 — НАПРЯМУЮ читает ДНК в большой бороздке. Частая мутация в раке.',
-  249:'Arg249 — структурная горячая точка (часто мутирует при раке печени).',
-  273:'Arg273 — ключевой контакт с остовом ДНК. Одна из главных раковых мутаций.',
-  282:'Arg282 — стабилизирует ДНК-связывающую поверхность.',
-};
+// HOTSPOTS (frequent cancer mutations) are per-level — set from LEVEL.hotspots on load.
 // summarise each polymer chain once (how many residues / nucleotides it has)
 function buildChainStats(){
   CHAIN_STATS = {};
@@ -508,24 +679,25 @@ function buildChainStats(){
 function annotate(a, mode){
   const resn=(a.resn||'').toUpperCase(), resi=a.resi, chain=a.chain||'?';
   const elem=(a.elem||'').toUpperCase();
+  const NM = LEVEL ? LEVEL.name : 'белок';
   if(elem==='ZN' || resn==='ZN')
-    return '🎯 ИОН ЦИНКА (Zn²⁺)\nСтруктурная опора ядра p53 — наша мишень для стыковки.';
+    return `🎯 ИОН ЦИНКА (Zn²⁺)\nСтруктурная опора ядра ${NM} — наша мишень для стыковки.`;
   if(resn==='HOH' || resn==='WAT')
     return '💧 Молекула воды\nЧасть кристаллической структуры, а не самого белка.';
   if(a.het)
-    return `🔶 ${resn} · цепь ${chain}\nИон или малая молекула, связанная со структурой.`;
+    return `🔶 ${resn} · цепь ${chain}\nИон или малая молекула, связанная со структурой${LEVEL && !LEVEL.open && LEVEL.drug ? ' (в т.ч. само лекарство — цель стыковки)' : ''}.`;
   const n = CHAIN_STATS[chain] ? CHAIN_STATS[chain].res.size : '?';
 
   if(DNA_RESN.includes(resn)){
     if(mode==='chain')
-      return `🧬 ДНК · цепь ${chain}\nНить из ${n} нуклеотидов. p53 садится на ДНК и включает\nгены-защитники (p21 и др.), останавливающие рост опухоли.\n🔍 Приблизься, чтобы навести на отдельный нуклеотид.`;
-    return `🧬 Нуклеотид ${resn}${resi} · цепь ${chain}\nОтдельное звено нити ДНК, с которой контактирует p53.`;
+      return `🧬 ДНК · цепь ${chain}\nНить из ${n} нуклеотидов. Раковые белки вроде ${NM}\nконтактируют с ДНК и управляют работой генов.\n🔍 Приблизься, чтобы навести на отдельный нуклеотид.`;
+    return `🧬 Нуклеотид ${resn}${resi} · цепь ${chain}\nОтдельное звено нити ДНК рядом с белком ${NM}.`;
   }
 
   if(mode==='chain')
-    return `🔷 Цепь ${chain} — белок p53\nЛента из ${n} аминокислот ДНК-связывающего домена.\n🔍 Приблизься, чтобы навести на отдельную аминокислоту.`;
+    return `🔷 Цепь ${chain} — белок ${NM}\nЛента из ${n} аминокислот.\n🔍 Приблизься, чтобы навести на отдельную аминокислоту.`;
   let s = `🔷 ${resn}${resi} · цепь ${chain}`;
-  s += HOTSPOTS[resi] ? '\n★ '+HOTSPOTS[resi] : '\nАминокислота ДНК-связывающего домена p53.';
+  s += HOTSPOTS[resi] ? '\n★ '+HOTSPOTS[resi] : `\nАминокислота белка ${NM}.`;
   return s;
 }
 let curHi=null, prevHi=null, focused=false;
@@ -769,6 +941,9 @@ el('btnDock').onclick = async ()=>{
   score = pts;
   el('scoreVal').textContent = score.toLocaleString('ru-RU');
 
+  // record per-level progress (attempt / best affinity / solved + unlock next)
+  recordResult(affinity, mind);
+
   // one-time explanation of what the score means, shown on the very first test
   const firstTest = !localStorage.getItem('pd_score_seen');
 
@@ -875,7 +1050,7 @@ function loadLeaderboard(){
 const ABOUT_STEPS = [
   { icon:'🔒', title:'Что такое рак — простыми словами',
     body:`Представь <span class="hl">сломанный механизм</span> внутри клетки: он застрял в режиме «включено» и заставляет клетку делиться без остановки. Это и есть рак.<br><br>
-          У механизма есть уязвимое место — <span class="hlc">«карман»</span>, его «выключатель». Перед тобой реальный раковый белок <b>p53</b> с таким карманом.` },
+          У механизма есть уязвимое место — <span class="hlc">«карман»</span>, его «выключатель». В игре тебя ждут <b>несколько реальных раковых белков</b> (уровней) — от p53 до «неприступных» мишеней, к которым лекарства ещё нет.` },
   { icon:'🔑', title:'Ты — с ключом в руках',
     body:`Твоя маленькая молекула — это <span class="hlc">ключ</span> (или затычка).<br><br>
           Задача — как в детской игрушке, где фигурку нужно вставить в подходящее по форме отверстие: <span class="hl">вставить ключ точно в карман</span> и заклинить «выключатель», чтобы механизм рака перестал работать.<br><br>
@@ -888,7 +1063,7 @@ const HOW_STEPS = [
   { icon:'🔹', title:'Твой ключ и цель',
     body:`Голубая молекула с подписью <span class="hlc">«ТВОЁ ЛЕКАРСТВО»</span> — это <b>молекула-кандидат в лекарство</b> (крошечное вещество, которым лечат). В игре это твой ключ, им ты управляешь.<br><br>
           <span class="hl">Зелёный пульсирующий маркер со стрелкой «◎ ЦЕЛЬ»</span> — это карман белка («выключатель»). Веди ключ прямо в него.<br><br>
-          Карман <b>не случаен</b>: это реальный цинковый сайт (Zn²⁺) белка p53 из структуры <b>1TUP</b> — одно из ключевых уязвимых мест.` },
+          Карман <b>не случаен</b>: на каждом уровне это реальное уязвимое место конкретного ракового белка (например, цинковый сайт p53 или карман, куда садится настоящее лекарство). Уровни выбираются кнопкой <span class="hlc">🗂 УРОВНИ</span>.` },
   { icon:'🎮', title:'Управление ключом',
     body:`<b>Двигать:</b> <kbd>←</kbd><kbd>↑</kbd><kbd>→</kbd><kbd>↓</kbd> — по экрану, <kbd>W</kbd>/<kbd>S</kbd> — ближе/дальше.<br>
           <b>Вращать:</b> <kbd>Q</kbd>/<kbd>E</kbd> · <kbd>A</kbd>/<kbd>D</kbd> · <kbd>Z</kbd>/<kbd>C</kbd>.<br><br>
@@ -910,14 +1085,89 @@ function renderTut(){
   el('tutNext').textContent = tstep===curSteps.length-1 ? '🚀 НАЧАТЬ ИГРУ' : 'Далее ▶';
 }
 function openTut(steps){ curSteps=steps; tstep=0; renderTut(); el('tut').classList.add('show'); }
-function closeTut(){ el('tut').classList.remove('show'); localStorage.setItem('pd_seen','1'); }
+function closeTut(){ el('tut').classList.remove('show'); localStorage.setItem('pd_seen','1');
+  if(!LEVEL) openLevels(); }   // after the intro, pick a target
 el('tutNext').onclick = ()=>{ tstep<curSteps.length-1 ? (tstep++, renderTut()) : closeTut(); };
 el('tutPrev').onclick = ()=>{ if(tstep>0){tstep--; renderTut();} };
 el('tutSkip').onclick = closeTut;
 el('btnAbout').onclick = ()=> openTut(ABOUT_STEPS);
 el('btnHelp').onclick  = ()=> openTut(HOW_STEPS);
-// first visit → the full story: meaning first, then controls
-function maybeTutorial(){ if(!localStorage.getItem('pd_seen')) openTut(ABOUT_STEPS.concat(HOW_STEPS)); }
+
+/* ============================================================
+   LEVEL SELECT + progress
+   ----------------------------------------------------------
+   Progress is stored per level in localStorage:
+     pd_levels = { <id>: { attempted, solved, best } }
+   • best   — best (most negative) binding energy seen, ккал/моль
+   • solved — a normal target docked while inside the pocket
+   • open levels are never "solved"; they only track attempted + best.
+   A level is unlocked once the PREVIOUS one is solved (normal) or
+   attempted (open). Level 1 is always unlocked.
+   ============================================================ */
+function getProg(){ try{ return JSON.parse(localStorage.getItem('pd_levels')||'{}'); }catch{ return {}; } }
+function setProg(p){ localStorage.setItem('pd_levels', JSON.stringify(p)); }
+function isUnlocked(i, prog){
+  if(LEVELS[i].open) return true;   // open science problems are available from the start
+  if(i===0) return true;
+  const P = LEVELS[i-1], pr = prog[P.id] || {};
+  return P.open ? !!pr.attempted : !!pr.solved;
+}
+// called after every "TEST DRUG": store the attempt and maybe mark the level solved
+function recordResult(aff, mind){
+  if(!LEVEL) return;
+  const prog = getProg(), pr = prog[LEVEL.id] || {};
+  pr.attempted = true;
+  if(pr.best==null || aff < pr.best) pr.best = aff;      // more negative = stronger = better
+  let newlySolved = false;
+  if(!LEVEL.open && mind <= 5 && !pr.solved){ pr.solved = true; newlySolved = true; }
+  prog[LEVEL.id] = pr; setProg(prog);
+  if(newlySolved){
+    const next = LEVELS[LEVEL_IDX+1];
+    // open levels are already available from the start, so only announce a genuine unlock
+    const msg = (next && !next.open) ? ('✔ Мишень пройдена! Открыт уровень: ' + next.name)
+                                     : '✔ Мишень пройдена! 🎉';
+    setTimeout(()=>showToast(msg, 3200), 700);
+  }
+}
+
+function renderLevels(){
+  const prog = getProg();
+  el('levelGrid').innerHTML = LEVELS.map((L,i)=>{
+    const pr = prog[L.id] || {}, unlocked = isUnlocked(i, prog);
+    const bestTxt = pr.best!=null ? pr.best.toFixed(1)+' ккал/моль' : null;
+    let cls, badge, foot;
+    if(!unlocked){
+      cls='lv-lock'; badge='🔒';
+      foot = LEVELS[i-1] && LEVELS[i-1].open ? 'сначала попробуй предыдущую' : 'сначала пройди предыдущую мишень';
+    } else if(L.open){
+      cls='lv-open'; badge='🔬';
+      foot = bestTxt ? ('твой лучший: '+bestTxt) : 'лекарства ещё нет — попробуй первым!';
+    } else if(pr.solved){
+      cls='lv-done'; badge='✔';
+      foot = 'ПРОЙДЕНО · лучшее: ' + (bestTxt||'—');
+    } else {
+      cls='lv-todo'; badge='▶';
+      foot = bestTxt ? ('попытка: '+bestTxt+' — дожми до кармана') : 'доступно — вперёд!';
+    }
+    const tag = L.open ? 'ОТКРЫТАЯ ЗАДАЧА' : (L.drug || '');
+    return `<div class="lvCard ${cls}" data-i="${i}" title="${L.blurb.replace(/"/g,'&quot;')}">
+      <div class="lvTop"><span class="lvNum">УРОВЕНЬ ${i+1}</span><span class="lvBadge">${badge}</span></div>
+      <div class="lvName">${L.name}</div>
+      <div class="lvTag">${tag}</div>
+      <div class="lvFoot">${foot}</div>
+    </div>`;
+  }).join('');
+  el('levelGrid').querySelectorAll('.lvCard').forEach(c=>{
+    const i = +c.dataset.i;
+    c.onclick = isUnlocked(i, getProg())
+      ? ()=>loadLevel(i)
+      : ()=>showToast('🔒 Сначала разберись с предыдущей мишенью');
+  });
+}
+function openLevels(){ renderLevels(); el('levels').classList.add('show'); }
+function closeLevels(){ el('levels').classList.remove('show'); }
+el('btnLevels').onclick   = ()=> openLevels();
+el('levelsClose').onclick = ()=>{ if(LEVEL) closeLevels(); else showToast('Выбери мишень, чтобы начать'); };
 
 init();
 </script>
