@@ -1,5 +1,7 @@
 # 🧬 Protein Docker — a "drug-fitting" game
 
+**▶️ [Играть онлайн](https://NKolosov097.github.io/protein-web/)**
+
 A browser game featuring the real **p53 protein (PDB 1TUP)** rendered in 3D. You steer a
 small drug-like molecule toward the protein's functional pocket; the game measures the
 contact, awards points, and celebrates with sound and fireworks.
