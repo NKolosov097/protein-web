@@ -97,13 +97,14 @@ window.addEventListener('mousedown', e=>{
   if(!viewer || !el('viewer').contains(e.target)) return;
   // Shift = pan the camera (works in every mode, like Blender)
   if(e.shiftKey && e.button===0){
-    panning=true; lastPX=e.clientX; lastPY=e.clientY;
+    panning=true; camInteracting=true; lastPX=e.clientX; lastPY=e.clientY;
     if(infoMode){ hoverInfo=null; hideTip(); }
     e.preventDefault(); e.stopPropagation(); return;
   }
   if(infoMode) return;                 // study mode owns the cursor (hover tooltips)
   const r=el('viewer').getBoundingClientRect();
-  if(!ligHit(e.clientX-r.left, e.clientY-r.top)) return;   // not on the molecule → let 3Dmol orbit
+  // not on the molecule → let 3Dmol orbit the camera; freeze the gameplay redraw meanwhile
+  if(!ligHit(e.clientX-r.left, e.clientY-r.top)){ camInteracting=true; return; }
   if(e.button===2)      rotatingLig=true;   // right-drag → rotate
   else if(e.button===0) draggingLig=true;   // left-drag  → move
   else return;
@@ -136,6 +137,7 @@ window.addEventListener('mousemove', e=>{
   }
 }, true);
 window.addEventListener('mouseup', e=>{
+  camInteracting=false;   // camera released → gameplay loop resumes on its next tick
   if(panning){ panning=false; e.stopPropagation(); }
   if(draggingLig||rotatingLig){ draggingLig=rotatingLig=false; el('viewer').style.cursor='grab'; e.stopPropagation(); }
 }, true);

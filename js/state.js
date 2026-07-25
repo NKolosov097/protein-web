@@ -45,6 +45,9 @@ let LEVEL = null, LEVEL_IDX = 0, gen = 0, POCKET_LABEL = 'КАРМАН';
 let HOTSPOTS = {};   // per-level cancer-mutation hotspots (set on load)
 // "ding" on entering the pocket — fires once per boundary crossing (see zoneSound)
 let wasInPocket = false;
+// true while the CAMERA is being moved (orbit / pan). The animation loop freezes the
+// gameplay redraw during this time so it doesn't fight 3Dmol's own render — see animate().
+let camInteracting = false;
 
 // standard residues — everything else (except water) is treated as hetero (ion / small molecule)
 const AA_RESN = new Set('ALA ARG ASN ASP CYS GLN GLU GLY HIS ILE LEU LYS MET PHE PRO SER THR TRP TYR VAL MSE SEC'.split(' '));

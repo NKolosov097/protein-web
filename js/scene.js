@@ -225,9 +225,24 @@ function draw(t=0){
 /* ---------- animation loop ("living", breathing molecule) ---------- */
 // myGen ties the loop to the level it started for; switching levels bumps `gen`
 // so any older loop stops on its next tick (prevents overlapping renders).
+//
+// ~20 fps, throttled against the display refresh (rAF + time delta) rather than the old
+// rAF(setTimeout) combo, so the redraw lands on a real frame instead of mid-cycle.
+//
+// While the CAMERA is being moved (camInteracting: orbit / pan), we SKIP the gameplay
+// redraw entirely. 3Dmol already re-renders the scene for the camera move, so rebuilding
+// the ~20 ligand/target shapes and firing a second full render on top of it only competes
+// with the rotation and causes the stutter. The shapes stay in place and turn with the
+// scene; the "breathing" just pauses for the duration of the drag (invisible while turning).
+let lastFrameTs = 0;
 function animate(myGen){
   if(myGen !== gen) return;
-  breath += 0.06;
-  draw(breath);
-  requestAnimationFrame(()=>setTimeout(()=>animate(myGen), 45)); // ~20 fps
+  requestAnimationFrame(ts=>{
+    if(myGen !== gen) return;                 // level switched → let this loop die
+    if(ts - lastFrameTs >= 45){               // ~20 fps cap
+      lastFrameTs = ts;
+      if(!camInteracting){ breath += 0.06; draw(breath); }
+    }
+    animate(myGen);                           // schedule the next frame
+  });
 }
