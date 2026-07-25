@@ -44,8 +44,36 @@ An internet connection is required: 3Dmol.js and the 1TUP structure are loaded f
 | Zoom in / out | mouse wheel |
 | Study the protein | **🔎 STUDY** button → hover the cursor |
 | Test the drug | **▶ TEST DRUG** button |
+| Sound on/off | 🔇 icon in the top-left header |
+| Help / about | **❓ ОБ ИГРЕ** button → tabs "About" / "How to play" |
+| Replay the guided tutorial | **🎓 ОБУЧЕНИЕ** button |
 
 Movement is **camera-relative** — the molecule goes where you look, regardless of keyboard layout.
+
+## Guided tutorial (level 1)
+
+Level 1 doesn't drop you into a wall of text — a **dynamic in-scene coach** teaches the whole
+loop hands-on, flying the camera and narrating each object as you go (`js/coach.js`):
+
+1. **Overview** — the whole cancer protein, pocket and drug hidden.
+2. **Your drug** — the camera flies to the ligand; it blinks and is labelled.
+3. **The pocket** — the camera **turns the protein** so the pocket (usually on the far side)
+   faces you, then flies in; the pocket marker appears and pulses.
+4. **Guide it in** — the view tilts to show the pocket clearly, a glowing **track** appears from
+   the drug to the pocket, and the drug is *magnetically snapped* onto it while you drag, so a
+   first-timer can't lose it in space.
+5. **Seat it** — a blinking **reference pose** shows how the key should sit; rotate (right-drag)
+   until it clicks into place.
+6. **Test** — the action menu reappears with the **▶ TEST DRUG** button pulsing; press it to clear
+   the level. A "level cleared" modal shows an **auto-rendered 3D preview** of the next target.
+
+While the coach runs, the bottom meter and the right-hand action menu are hidden so the 3D scene
+is fully visible; the narration sits at the bottom and the action menu returns for the test.
+
+The coach runs every time you load level 1 (skip it with **ПРОПУСТИТЬ ОБУЧЕНИЕ ✕**, or replay it
+with **🎓 ОБУЧЕНИЕ**). On **later druggable levels** you're on your own — only the blinking
+reference drug is shown in the pocket as the goal (toggle it with **💡 ПОДСКАЗКА**); the open
+problems (no reference drug exists) show just the pocket marker.
 
 **Goal:** guide the molecule into the pocket. A dashed guide line runs from the molecule to
 the target, and the meter at the bottom changes color with distance to the pocket:
@@ -63,7 +91,8 @@ When the meter is green, press **▶ TEST DRUG** to get a binding energy (kcal/m
 - ✅ **Stage 1** — 3D surface (VDW) + cartoon ribbons, mouse rotation, wheel zoom, Shift-pan
 - ✅ **Stage 2** — the ligand, controls, a highlighted target pocket (Zn site), guide line, glow
 - ✅ **Stage 3** — Python backend (FastAPI) with a fallback to an in-browser calculation
-- ✅ **Stage 4 (mini)** — points, fireworks (particles), a local leaderboard, sound (toggle button)
+- ✅ **Stage 4 (mini)** — points, fireworks (particles), a local leaderboard, sound (header icon)
+- ✅ **Guided tutorial** — a dynamic in-scene coach that teaches level 1 hands-on (see above)
 - ✅ **Study mode** — hovering shows what each residue does, including cancer "hotspots" of p53
 
 ### Study mode
@@ -80,11 +109,13 @@ Highlighting is **zoom-aware**:
 So you can zoom in and point at one amino acid to read about it, or zoom out to grasp the
 whole chain.
 
-## Stage 3 (backend) — connected
+## Stage 3 (backend) — available
 
-The **TEST DRUG** button sends the molecule's coordinates to `http://localhost:8000/dock`.
-If the server is **not running**, the game computes the result in the browser instead (fallback) —
-the toast will read "browser"; with the server running it reads "Python server".
+By default **TEST DRUG** scores with the in-browser shape-contact model (instant, offline,
+orientation-aware) — the old in-UI engine toggle was removed to keep the menu clear. The Python
+backend path is still wired: flip the `engine` constant in `js/hud.js` from `'learn'` to `'vina'`
+and **TEST DRUG** will POST the coordinates to `http://localhost:8000/dock` (falling back to the
+browser model if the server or Vina is unavailable).
 
 ### Running the server
 If Python is not installed on this machine (only the Microsoft Store stub), install it first:
