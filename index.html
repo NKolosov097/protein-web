@@ -8,8 +8,11 @@
 <div id="load"><div class="spin"></div><div id="loadTxt">ЗАГРУЗКА СТРУКТУРЫ…</div></div>
 
 <div id="hdr" class="panel">
-  <h1>PROTEIN&nbsp;DOCKER</h1>
-  <div class="sub" id="hdrSub">МИШЕНЬ: —</div>
+  <div id="hdrText">
+    <h1>PROTEIN&nbsp;DOCKER</h1>
+    <div class="sub" id="hdrSub">МИШЕНЬ: —</div>
+  </div>
+  <button class="iconBtn" id="btnSound" title="Звук вкл/выкл">🔇</button>
 </div>
 
 <div id="score" class="panel">
@@ -46,18 +49,20 @@
 <div id="actions" class="panel">
   <button class="b-dock" id="btnDock">▶ ТЕСТ ЛЕКАРСТВА</button>
   <button class="b-ghost" id="btnSolve">💡 ПОДСКАЗКА</button>
-  <button class="b-ghost" id="btnEngine">🧪 РАСЧЁТ: ОБУЧЕНИЕ</button>
   <button class="b-ghost" id="btnLevels">🗂 УРОВНИ</button>
-  <button class="b-ghost" id="btnSound">🔇 ЗВУК: ВЫКЛ</button>
   <button class="b-ghost" id="btnInfo">🔎 ИЗУЧЕНИЕ</button>
+  <button class="b-ghost" id="btnCoach">🎓 ОБУЧЕНИЕ</button>
   <button class="b-ghost" id="btnReset">↺ СБРОС</button>
-  <button class="b-ghost" id="btnAbout">❓ О ЧЁМ ИГРА</button>
-  <button class="b-ghost" id="btnHelp">❔ КАК ИГРАТЬ</button>
+  <button class="b-ghost" id="btnGuide">❓ ОБ ИГРЕ</button>
 </div>
 
 <div id="tut">
   <div id="tutCard">
     <div id="tutSkip">ПРОПУСТИТЬ ✕</div>
+    <div class="tutTabs">
+      <button class="tutTab" id="tutTabAbout">О ЧЁМ ИГРА</button>
+      <button class="tutTab" id="tutTabHow">КАК ИГРАТЬ</button>
+    </div>
     <div id="tutIcon">🧬</div>
     <h2 id="tutTitle"></h2>
     <div id="tutBody"></div>
@@ -85,6 +90,26 @@
 <div id="toast"></div>
 <div id="tip"></div>
 
+<!-- guided-tutorial narration bubble + blinking "grab here" cursor (see js/coach.js) -->
+<div id="coach">
+  <div id="coachSkip">ПРОПУСТИТЬ ОБУЧЕНИЕ ✕</div>
+  <div id="coachIcon">🧬</div>
+  <div id="coachText"></div>
+  <button class="b-dock" id="coachNext">Далее ▶</button>
+</div>
+<div id="coachCursor"><span class="cc-ring"></span><span class="cc-hand">🖐</span><span class="cc-tip"></span></div>
+
+<!-- level-cleared modal: congrats + auto-rendered 3D preview of the next target -->
+<div id="coachDone">
+  <div id="coachDoneCard">
+    <div id="coachDoneIcon">🏆</div>
+    <h2 id="coachDoneTitle">МИШЕНЬ ПРОЙДЕНА!</h2>
+    <div class="cdPreviewWrap"><div class="spin" id="cdSpin"></div><img id="cdPreview" alt=""></div>
+    <div id="coachDoneBody"></div>
+    <button class="b-dock" id="coachDoneGo">Далее ▶</button>
+  </div>
+</div>
+
 <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
 
 <!-- ============================================================
@@ -98,8 +123,9 @@
        controls   → keyboard + mouse manipulation of the ligand
        study      → "ИЗУЧЕНИЕ" hover-to-learn mode
        hud        → buttons, toast, sound, leaderboard
-       tutorial   → onboarding decks
+       tutorial   → static help decks (tabbed "About" / "How to play" modal)
        levels     → level picker + progress
+       coach      → dynamic in-scene onboarding for level 1 (camera flights, track, magnet)
        main       → init() (must be last)
      ============================================================ -->
 <script src="js/state.js"></script>
@@ -112,4 +138,5 @@
 <script src="js/hud.js"></script>
 <script src="js/tutorial.js"></script>
 <script src="js/levels.js"></script>
+<script src="js/coach.js"></script>
 <script src="js/main.js"></script>

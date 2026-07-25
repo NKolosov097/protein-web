@@ -9,10 +9,10 @@ function init(){
   viewer = $3Dmol.createViewer("viewer", { backgroundColor:0x05060f });
   el('load').style.display='none';     // nothing is loading until a level is picked
   loadLeaderboard();
-  // first visit → the full story (concept + controls); closeTut() then loads the default level.
-  // otherwise → jump straight into a level (last played, or level 1 if none was ever chosen).
-  if(!localStorage.getItem('pd_seen')) openTut(ABOUT_STEPS.concat(HOW_STEPS));
-  else loadLevel(defaultLevelIdx());
+  // jump straight into a level (last played, or level 1 if none was ever chosen). Onboarding is
+  // no longer a modal wall — the dynamic in-scene coach (js/coach.js) runs on level 1 instead;
+  // the "❓ ОБ ИГРЕ" button reopens the static reference decks any time.
+  loadLevel(defaultLevelIdx());
 }
 // which level to open on startup: the last one the player chose, else the first (level 1)
 function defaultLevelIdx(){
@@ -28,6 +28,7 @@ function loadLevel(i){
   const myGen = ++gen;                 // invalidate any running animation loop / pending load
   closeLevels(); hideTip();
   if(infoMode) setInfoMode(false);     // study mode off when switching targets
+  if(coachActive) endCoach();          // drop any running coach when switching targets
 
   // wipe the previous structure and gameplay overlays
   try{ viewer.removeAllModels(); }catch(e){}
@@ -96,9 +97,21 @@ function onModelLoaded(atoms, myGen){
   lig.x = pocket.x + 26; lig.y = pocket.y + 14; lig.z = pocket.z + 22;
   lig.rx = lig.ry = lig.rz = 0;
 
-  viewer.zoomTo(); viewer.zoom(0.9); viewer.render();
+  // frame the protein, lifted a little so it doesn't sit low behind the bottom meter panel
+  viewer.zoomTo(); viewer.zoom(0.9); viewer.translate(0, 55); viewer.render();
   el('load').style.display='none';
   animate(myGen);            // loop: ligand "breathing" + recompute
+
+  // onboarding vs "show me the goal":
+  //  • level 1 → run the dynamic coach every time (spec: it teaches the whole loop hands-on).
+  //  • other druggable levels → auto-show the blinking reference pose as the goal to aim for
+  //    (the player does everything themselves; 💡 ПОДСКАЗКА still toggles it off/on).
+  //  • open problems (no reference drug exists) → nothing to show, just the pocket marker.
+  if(LEVEL_IDX===0){
+    startCoach();
+  } else if(!LEVEL.open){
+    solutionPose = solveBestPose(); showSolution = true; syncSolveBtn();
+  }
 }
 
 /* ---------- protein surface ---------- */
@@ -121,27 +134,33 @@ function removeProteinSurface(){
 // and only rebuild the ligand label when the molecule actually moves.
 let targetLabel=null, ligLabel=null, lastLigLabelPos='';
 function syncLabels(){
-  // target marker label (◎ "TARGET") — static, so create it a single time
-  if(!targetLabel){
-    targetLabel = viewer.addLabel("◎ ЦЕЛЬ: " + POCKET_LABEL, {
-      position:{x:pocket.x, y:pocket.y+12, z:pocket.z},
-      backgroundColor:'#04220a', backgroundOpacity:0.75,
-      fontColor:'#39ff14', fontSize:12, borderThickness:1.4, borderColor:'#39ff14',
-      inFront:true, alignment:'bottomCenter'
-    });
-  }
+  // target marker label (◎ "TARGET") — static, so create it a single time; the coach can hide
+  // the pocket entirely (intro steps), so drop the label with it and recreate it once shown.
+  if(!coachHidePocket){
+    if(!targetLabel){
+      targetLabel = viewer.addLabel("◎ ЦЕЛЬ: " + POCKET_LABEL, {
+        position:{x:pocket.x, y:pocket.y+12, z:pocket.z},
+        backgroundColor:'#04220a', backgroundOpacity:0.75,
+        fontColor:'#39ff14', fontSize:12, borderThickness:1.4, borderColor:'#39ff14',
+        inFront:true, alignment:'bottomCenter'
+      });
+    }
+  } else if(targetLabel){ viewer.removeLabel(targetLabel); targetLabel = null; }
+
   // ligand label (🔹 "YOUR DRUG") — follows the molecule, so rebuild only when it moved
-  const key = lig.x+','+lig.y+','+lig.z;
-  if(key!==lastLigLabelPos){
-    if(ligLabel) viewer.removeLabel(ligLabel);
-    ligLabel = viewer.addLabel("🔹 ТВОЁ ЛЕКАРСТВО", {
-      position:{x:lig.x, y:lig.y+4.5, z:lig.z},
-      backgroundColor:'#0a1330', backgroundOpacity:0.72,
-      fontColor:'#22e0ff', fontSize:12, borderThickness:1.4, borderColor:'#22e0ff',
-      inFront:true, alignment:'bottomCenter'
-    });
-    lastLigLabelPos = key;
-  }
+  if(!coachHideDrug){
+    const key = lig.x+','+lig.y+','+lig.z;
+    if(key!==lastLigLabelPos){
+      if(ligLabel) viewer.removeLabel(ligLabel);
+      ligLabel = viewer.addLabel("🔹 ТВОЁ ЛЕКАРСТВО", {
+        position:{x:lig.x, y:lig.y+4.5, z:lig.z},
+        backgroundColor:'#0a1330', backgroundOpacity:0.72,
+        fontColor:'#22e0ff', fontSize:12, borderThickness:1.4, borderColor:'#22e0ff',
+        inFront:true, alignment:'bottomCenter'
+      });
+      lastLigLabelPos = key;
+    }
+  } else if(ligLabel){ viewer.removeLabel(ligLabel); ligLabel = null; lastLigLabelPos = ''; }
 }
 // forget cached labels after they are wiped externally (e.g. study mode clears all labels)
 function resetLabels(){ targetLabel=null; ligLabel=null; lastLigLabelPos=''; }
@@ -162,39 +181,48 @@ function draw(t=0){
   const {color, status, pct, hint} = quality(fit);
   const inPocket = mind <= 5;
 
-  // ---- TARGET MARKER: pulsing pocket (zinc site) ----
-  const pulse = 2.4 + 0.5*Math.sin(t*1.5);
-  viewer.addSphere({center:pocket, radius:pulse, color:'#39ff14', opacity:0.22});
-  viewer.addSphere({center:pocket, radius:0.9, color:'#39ff14', opacity:0.9});
-  // arrow pointing INTO the pocket from "above" ON SCREEN — anchored to the camera's up
-  // axis (not world-Y), so it always lines up with the target and its tip sits on the
-  // marker no matter how the camera is turned. (Previously it floated off to the side.)
-  const up = camBasis().up;
-  viewer.addArrow({
-    start:{x:pocket.x+up[0]*9,   y:pocket.y+up[1]*9,   z:pocket.z+up[2]*9},
-    end:  {x:pocket.x+up[0]*2.4, y:pocket.y+up[1]*2.4, z:pocket.z+up[2]*2.4},
-    radius:0.55, color:'#39ff14', radiusRatio:2.2
-  });
-  // target + ligand labels — created once and refreshed only on movement (see syncLabels)
+  // ---- TARGET MARKER: pulsing pocket (zinc site) ---- (coach may hide it early on)
+  if(!coachHidePocket){
+    const pulse = 2.4 + 0.5*Math.sin(t*1.5);
+    viewer.addSphere({center:pocket, radius:pulse, color:'#39ff14', opacity:0.22});
+    viewer.addSphere({center:pocket, radius:0.9, color:'#39ff14', opacity:0.9});
+    // arrow pointing INTO the pocket from "above" ON SCREEN — anchored to the camera's up
+    // axis (not world-Y), so it always lines up with the target and its tip sits on the
+    // marker no matter how the camera is turned. (Previously it floated off to the side.)
+    const up = camBasis().up;
+    viewer.addArrow({
+      start:{x:pocket.x+up[0]*9,   y:pocket.y+up[1]*9,   z:pocket.z+up[2]*9},
+      end:  {x:pocket.x+up[0]*2.4, y:pocket.y+up[1]*2.4, z:pocket.z+up[2]*2.4},
+      radius:0.55, color:'#39ff14', radiusRatio:2.2
+    });
+  }
+  // target + ligand labels — created once and refreshed only on movement (see syncLabels).
+  // syncLabels() itself honours the coach hide flags so labels vanish with their objects.
   syncLabels();
 
-  // ligand atoms — spheres with glow (brighter inside the pocket)
-  const glow = inPocket ? 0.55 : 0.42;
-  world.forEach((w,i)=>{
-    viewer.addSphere({center:w, radius:glow, color:LIG_LOCAL[i].c});
-    if(inPocket) viewer.addSphere({center:w, radius:glow+0.25, color:'#39ff14', opacity:0.25});
-  });
-  // bonds within the ligand
-  for(let i=0;i<6;i++){
-    viewer.addCylinder({start:world[i], end:world[(i+1)%6], radius:0.12, color:'#4de3ff'});
+  // ligand atoms — spheres with glow (brighter inside the pocket). Coach can hide the drug
+  // entirely (intro steps) or make it "breathe" brighter to draw attention (coachBlinkDrug).
+  if(!coachHideDrug){
+    const glow = inPocket ? 0.55 : 0.42;
+    const op = coachBlinkDrug ? 0.4 + 0.6*(0.5+0.5*Math.sin(t*3)) : 1;
+    world.forEach((w,i)=>{
+      viewer.addSphere({center:w, radius:glow, color:LIG_LOCAL[i].c, opacity:op});
+      if(inPocket) viewer.addSphere({center:w, radius:glow+0.25, color:'#39ff14', opacity:0.25*op});
+    });
+    // bonds within the ligand
+    for(let i=0;i<6;i++){
+      viewer.addCylinder({start:world[i], end:world[(i+1)%6], radius:0.12, color:'#4de3ff', opacity:op});
+    }
+    viewer.addCylinder({start:world[0], end:world[6], radius:0.12, color:'#39ff14', opacity:op});
   }
-  viewer.addCylinder({start:world[0], end:world[6], radius:0.12, color:'#39ff14'});
 
-  // guide line: from molecule to target, colour by distance
-  viewer.addCylinder({
-    start:center, end:pocket, radius:0.08,
-    color, dashed:true, fromCap:1, toCap:1
-  });
+  // guide line: from molecule to target, colour by distance (only when both ends are shown)
+  if(!coachHideDrug && !coachHidePocket){
+    viewer.addCylinder({
+      start:center, end:pocket, radius:0.08,
+      color, dashed:true, fromCap:1, toCap:1
+    });
+  }
 
   // ---- SOLUTION GHOST: a SEPARATE blinking molecule showing the ideal pose to copy ----
   // Constant size (no "inflation"); the pulse is pure brightness/opacity so it reads clearly.
@@ -217,6 +245,9 @@ function draw(t=0){
 
   // sound — a short pleasant blip only when entering the pocket (no drone)
   zoneSound(mind);
+
+  // guided tutorial overlay: track + "grab here" cursor + auto-advance (adds shapes, so before render)
+  if(coachActive) coachRender(world, center, mind, fit);
 
   viewer.render();
   return mind;

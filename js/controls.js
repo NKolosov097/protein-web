@@ -102,6 +102,9 @@ window.addEventListener('mousedown', e=>{
     e.preventDefault(); e.stopPropagation(); return;
   }
   if(infoMode) return;                 // study mode owns the cursor (hover tooltips)
+  // coach intro steps (overview / drug / pocket): the drug isn't in play yet — any drag orbits
+  // the camera so the player can look around without disturbing the (hidden) molecule.
+  if(coachActive && coachStep<3){ camInteracting=true; return; }
   const r=el('viewer').getBoundingClientRect();
   // not on the molecule → let 3Dmol orbit the camera; freeze the gameplay redraw meanwhile
   if(!ligHit(e.clientX-r.left, e.clientY-r.top)){ camInteracting=true; return; }
@@ -127,6 +130,19 @@ window.addEventListener('mousemove', e=>{
     lig.x += (b.right[0]*dx - b.up[0]*dy)*k;  // screen-down (dy>0) = −up
     lig.y += (b.right[1]*dx - b.up[1]*dy)*k;
     lig.z += (b.right[2]*dx - b.up[2]*dy)*k;
+    // COACH: magnetic track — snap the drug's centroid onto the guide line (start → pocket) so a
+    // first-time player can't lose it in space; they still control HOW FAR along the track it goes.
+    if(coachMagnet && coachTrack){
+      const c = centroid(LIG_LOCAL.map(p=>ligWorld(p, breath)));   // centroid after this mouse move
+      const ta = coachTrack.a, tb = coachTrack.b;
+      const vx=tb.x-ta.x, vy=tb.y-ta.y, vz=tb.z-ta.z;
+      const len2 = vx*vx+vy*vy+vz*vz || 1;
+      let t = ((c.x-ta.x)*vx + (c.y-ta.y)*vy + (c.z-ta.z)*vz)/len2;
+      t = Math.max(0, Math.min(1, t));                              // clamp to the segment
+      lig.x += (ta.x+vx*t) - c.x;                                   // shift centroid onto the track
+      lig.y += (ta.y+vy*t) - c.y;
+      lig.z += (ta.z+vz*t) - c.z;
+    }
     e.preventDefault(); e.stopPropagation(); return;
   }
   if(rotatingLig){

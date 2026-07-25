@@ -1,10 +1,12 @@
 /* ============================================================
-   TUTORIAL (onboarding)
+   STATIC HELP ("ОБ ИГРЕ") — reference decks, opened on demand.
    ----------------------------------------------------------
    Two decks: ABOUT_STEPS explains WHAT/WHY (the lock-and-key metaphor
-   + the real point), HOW_STEPS explains the controls. First visit
-   shows both back-to-back; the two buttons ("About the game" / "How
-   to play") each reopen just their own deck.
+   + the real point), HOW_STEPS explains the controls. They now live
+   behind ONE button (❓ ОБ ИГРЕ) as two tabs inside the modal. The
+   hands-on onboarding for a first-time player is the dynamic coach
+   (js/coach.js) that runs in-scene on level 1 — this modal is just the
+   reference you can reopen any time.
    ============================================================ */
 const ABOUT_STEPS = [
   { icon:'🔒', title:'Что такое рак — простыми словами',
@@ -41,13 +43,19 @@ function renderTut(){
   el('tutBody').innerHTML = s.body;
   el('tutDots').innerHTML = curSteps.map((_,i)=>`<div class="dot ${i===tstep?'on':''}"></div>`).join('');
   el('tutPrev').style.visibility = tstep===0 ? 'hidden':'visible';
-  el('tutNext').textContent = tstep===curSteps.length-1 ? '🚀 НАЧАТЬ ИГРУ' : 'Далее ▶';
+  el('tutNext').textContent = tstep===curSteps.length-1 ? 'Готово ✓' : 'Далее ▶';
 }
-function openTut(steps){ curSteps=steps; tstep=0; renderTut(); el('tut').classList.add('show'); }
-function closeTut(){ el('tut').classList.remove('show'); localStorage.setItem('pd_seen','1');
-  if(!LEVEL) loadLevel(defaultLevelIdx()); }   // after the intro, drop straight into the default level
+// which tab is active mirrors which deck is showing
+function setTutTab(steps){
+  el('tutTabAbout').classList.toggle('on', steps===ABOUT_STEPS);
+  el('tutTabHow').classList.toggle('on', steps===HOW_STEPS);
+}
+function openTut(steps){ curSteps=steps; tstep=0; renderTut(); setTutTab(steps); el('tut').classList.add('show'); }
+function closeTut(){ el('tut').classList.remove('show'); }
 el('tutNext').onclick = ()=>{ tstep<curSteps.length-1 ? (tstep++, renderTut()) : closeTut(); };
 el('tutPrev').onclick = ()=>{ if(tstep>0){tstep--; renderTut();} };
 el('tutSkip').onclick = closeTut;
-el('btnAbout').onclick = ()=> openTut(ABOUT_STEPS);
-el('btnHelp').onclick  = ()=> openTut(HOW_STEPS);
+// tabs switch the deck in place; the single "❓ ОБ ИГРЕ" button opens on the "About" tab
+el('tutTabAbout').onclick = ()=> openTut(ABOUT_STEPS);
+el('tutTabHow').onclick   = ()=> openTut(HOW_STEPS);
+el('btnGuide').onclick    = ()=> openTut(ABOUT_STEPS);

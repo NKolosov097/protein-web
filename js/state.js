@@ -49,6 +49,15 @@ let wasInPocket = false;
 // gameplay redraw during this time so it doesn't fight 3Dmol's own render — see animate().
 let camInteracting = false;
 
+// ---- guided tutorial ("coach") state (see js/coach.js) ----
+// A step-driven, in-scene onboarding that flies the camera, blinks objects, draws a magnetic
+// track and highlights the test button. Auto-runs on level 1; these flags let draw() (scene.js)
+// and the drag handler (controls.js) react to the current coaching step without coach.js having
+// to reach into their internals.
+let coachActive = false, coachStep = -1;
+let coachHidePocket = false, coachHideDrug = false, coachBlinkDrug = false, coachMagnet = false;
+let coachTrack = null;   // {a:{x,y,z}, b:{x,y,z}} — straight path "drug start → pocket" for the magnet
+
 // standard residues — everything else (except water) is treated as hetero (ion / small molecule)
 const AA_RESN = new Set('ALA ARG ASN ASP CYS GLN GLU GLY HIS ILE LEU LYS MET PHE PRO SER THR TRP TYR VAL MSE SEC'.split(' '));
 const DNA_RESN = ['DA','DC','DG','DT','A','C','G','T','U','DU'];

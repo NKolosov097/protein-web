@@ -22,27 +22,12 @@ el('btnSolve').onclick = ()=>{
 syncSolveBtn();
 
 /* ---------- "DRUG TEST" → score calculation ----------
-   Two engines (toggle with the 🧪 engine button):
-     • 'learn' — the shape-contact model, computed in-browser: instant, offline, for learning.
-     • 'vina'  — real AutoDock Vina on the Python backend: scientifically meaningful, but needs
-                 the server running with `vina` installed + a receptor .pdbqt for the level.
-                 If it's not available we say so and fall back to the learning model. */
+   The score uses the in-browser shape-contact model ('learn'): instant, offline, orientation-
+   aware — the right fit for a learning game. The backend AutoDock Vina path ('vina') is kept
+   wired below (it's a real docking engine) but there's no in-UI toggle anymore; leave `engine`
+   at 'learn'. Flip this constant to 'vina' to route through the Python server instead. */
 const API = 'http://localhost:8000/dock';
-let engine = localStorage.getItem('pd_engine')==='vina' ? 'vina' : 'learn';
-function syncEngineBtn(){
-  el('btnEngine').textContent = engine==='vina' ? '🧪 РАСЧЁТ: VINA' : '🧪 РАСЧЁТ: ОБУЧЕНИЕ';
-  el('btnEngine').classList.toggle('b-dock', engine==='vina');
-  el('btnEngine').classList.toggle('b-ghost', engine!=='vina');
-}
-el('btnEngine').onclick = ()=>{
-  engine = engine==='vina' ? 'learn' : 'vina';
-  localStorage.setItem('pd_engine', engine);
-  syncEngineBtn();
-  showToast(engine==='vina'
-    ? '🧪 Режим VINA: настоящий докинг на сервере (нужен запущенный backend с установленной Vina)'
-    : '🧪 Режим ОБУЧЕНИЕ: упрощённая модель формы — мгновенно и без сервера', 3600);
-};
-syncEngineBtn();
+const engine = 'learn';
 
 el('btnDock').onclick = async ()=>{
   if(!pocket){ showToast('Сначала выбери мишень — 🗂 УРОВНИ'); return; }
@@ -83,6 +68,15 @@ el('btnDock').onclick = async ()=>{
 
   // record per-level progress (attempt / best affinity / solved + unlock next)
   recordResult(affinity, mind);
+
+  // guided tutorial: pressing TEST on the last coaching step (drug seated in the pocket) is the
+  // win — celebrate, then show the "level cleared" modal with a preview of the next target.
+  if(coachActive && coachStep===5 && mind<=5){
+    fireworks(); chimeWin();
+    if(pts>best){ best=pts; el('best').textContent='РЕКОРД: '+best.toLocaleString('ru-RU'); saveScore(pts); }
+    coachSuccess(affinity);
+    return;
+  }
 
   // one-time explanation of what the score means, shown on the very first test
   const firstTest = !localStorage.getItem('pd_score_seen');
@@ -158,9 +152,12 @@ function zoneSound(d){
 }
 // cheerful arpeggio on a new record
 function chimeWin(){ [523,659,784,1047].forEach((f,i)=>setTimeout(()=>blip(f,0.18,'triangle',0.16),i*90)); }
+// sound toggle — now a compact round icon in the header (see index.html #hdr)
 el('btnSound').onclick = ()=>{
   soundOn=!soundOn; initAudio();
-  el('btnSound').textContent = soundOn?'🔊 ЗВУК: ВКЛ':'🔇 ЗВУК: ВЫКЛ';
+  el('btnSound').textContent = soundOn ? '🔊' : '🔇';
+  el('btnSound').classList.toggle('on', soundOn);
+  el('btnSound').title = soundOn ? 'Звук: вкл' : 'Звук: выкл';
 };
 // unlock audio on first click (browser autoplay policy)
 window.addEventListener('click', initAudio, {once:true});
