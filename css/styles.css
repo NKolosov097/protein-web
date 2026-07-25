@@ -1,0 +1,131 @@
+:root{
+  --bg:#05060f; --panel:rgba(10,14,30,.72); --line:#1b2550;
+  --cyan:#22e0ff; --green:#39ff14; --red:#ff2e5b; --amber:#ffb000; --violet:#a15bff;
+  --txt:#cfe6ff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);
+  font-family:"Segoe UI",system-ui,sans-serif;overflow:hidden}
+#viewer{position:fixed;inset:0;width:100vw;height:100vh}
+/* neon grid backdrop */
+body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(33,224,255,.10), transparent 60%),
+    linear-gradient(transparent 95%, rgba(33,224,255,.08) 96%) 0 0/100% 40px,
+    linear-gradient(90deg, transparent 95%, rgba(33,224,255,.08) 96%) 0 0/40px 100%;}
+
+.panel{position:fixed;z-index:5;background:var(--panel);border:1px solid var(--line);
+  border-radius:14px;backdrop-filter:blur(10px);box-shadow:0 0 24px rgba(33,224,255,.12), inset 0 0 20px rgba(10,20,50,.5)}
+h1{font-size:15px;letter-spacing:3px;margin:0 0 2px;
+  background:linear-gradient(90deg,var(--cyan),var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{font-size:11px;color:#7f9cc9;letter-spacing:1px}
+
+/* top-left title */
+#hdr{top:16px;left:16px;padding:14px 18px}
+
+/* top-right score */
+#score{top:16px;right:16px;padding:14px 20px;text-align:right;min-width:190px}
+#scoreVal{font-size:34px;font-weight:800;color:var(--cyan);text-shadow:0 0 18px var(--cyan);line-height:1}
+#best{font-size:12px;color:var(--amber);margin-top:4px;letter-spacing:1px}
+
+/* distance meter bottom-center */
+#meter{bottom:18px;left:50%;transform:translateX(-50%);padding:12px 20px;width:min(560px,92vw)}
+.bar{height:14px;border-radius:8px;background:#0a1330;overflow:hidden;border:1px solid var(--line);margin-top:8px}
+#barFill{height:100%;width:0%;transition:width .12s linear, background .12s linear}
+.mrow{display:flex;justify-content:space-between;font-size:12px;letter-spacing:1px}
+#status{font-weight:700}
+/* plain-language mission line + contextual hint inside the meter panel */
+#mission{font-size:12px;line-height:1.45;color:#c7dbff;margin-bottom:10px;padding-bottom:9px;
+  border-bottom:1px solid var(--line)}
+#mission b{color:var(--green)}
+#hint{font-size:11px;color:#9db8e0;margin-top:7px;min-height:14px}
+
+/* controls help bottom-left */
+#help{bottom:18px;left:16px;padding:12px 14px;font-size:11px;line-height:1.7;color:#9db8e0;max-width:210px}
+#help b{color:var(--cyan)}
+kbd{background:#0e1738;border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:#dff;font-size:10px}
+
+/* buttons bottom-right */
+#actions{bottom:18px;right:16px;padding:12px;display:flex;flex-direction:column;gap:8px}
+button{cursor:pointer;font-family:inherit;font-weight:700;letter-spacing:1px;color:#001018;
+  border:none;border-radius:10px;padding:11px 16px;font-size:13px;transition:transform .08s, box-shadow .2s}
+button:active{transform:scale(.96)}
+.b-dock{background:linear-gradient(90deg,var(--green),#00d4a0);box-shadow:0 0 18px rgba(57,255,20,.5)}
+.b-ghost{background:#0e1738;color:var(--cyan);border:1px solid var(--line);box-shadow:none}
+
+/* loading + toast */
+#load{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:14px;background:var(--bg);font-size:14px;letter-spacing:2px;color:var(--cyan)}
+.spin{width:46px;height:46px;border:3px solid #12224e;border-top-color:var(--cyan);border-radius:50%;
+  animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+#toast{position:fixed;z-index:30;top:50%;left:50%;transform:translate(-50%,-50%) scale(.7);
+  padding:22px 40px;border-radius:16px;font-size:26px;font-weight:800;letter-spacing:2px;
+  color:#001018;background:linear-gradient(90deg,var(--green),var(--cyan));opacity:0;pointer-events:none;
+  box-shadow:0 0 40px rgba(57,255,20,.7);transition:opacity .3s, transform .3s}
+#toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+
+/* onboarding / tutorial */
+#tut{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;
+  background:rgba(2,4,12,.78);backdrop-filter:blur(4px)}
+#tut.show{display:flex}
+#tutCard{width:min(460px,92vw);padding:26px 28px;border-radius:18px;position:relative;
+  background:linear-gradient(160deg,#0b1230,#0a0e22);border:1px solid #2a3a74;
+  box-shadow:0 0 50px rgba(33,224,255,.25),inset 0 0 30px rgba(20,40,90,.5)}
+#tutIcon{font-size:44px;line-height:1;margin-bottom:10px}
+#tutTitle{font-size:20px;font-weight:800;margin:0 0 10px;letter-spacing:1px;
+  background:linear-gradient(90deg,var(--cyan),var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent}
+#tutBody{font-size:14px;line-height:1.65;color:#c7dbff;min-height:96px}
+#tutBody kbd{background:#0e1738;border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:#dff;font-size:12px}
+#tutBody .hl{color:var(--green);font-weight:700}
+#tutBody .hlc{color:var(--cyan);font-weight:700}
+.tutNav{display:flex;align-items:center;justify-content:space-between;margin-top:22px}
+.dots{display:flex;gap:7px}
+.dot{width:8px;height:8px;border-radius:50%;background:#22335f;transition:.2s}
+.dot.on{background:var(--cyan);box-shadow:0 0 10px var(--cyan);transform:scale(1.25)}
+.tutBtns{display:flex;gap:8px}
+#tutSkip{position:absolute;top:14px;right:16px;font-size:12px;color:#6f8bbf;cursor:pointer;letter-spacing:1px}
+#tutSkip:hover{color:var(--cyan)}
+
+/* leaderboard */
+#lb{top:120px;right:16px;padding:12px 16px;width:190px;display:none}
+#lb h2{font-size:12px;letter-spacing:2px;color:var(--violet);margin:0 0 8px}
+#lb ol{margin:0;padding-left:20px;font-size:12px;line-height:1.9}
+#lb li span{float:right;color:var(--cyan)}
+
+/* study-mode tooltip (HTML overlay, always kept inside the viewport) */
+#tip{position:fixed;z-index:15;display:none;max-width:min(340px,80vw);
+  padding:10px 13px;border-radius:10px;white-space:pre-line;
+  background:#160a2e;border:1px solid var(--violet);color:#e8ccff;
+  font-size:13px;line-height:1.5;pointer-events:none;
+  box-shadow:0 0 18px rgba(161,91,255,.35)}
+
+/* ---------- level select ---------- */
+#levels{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;
+  background:rgba(2,4,12,.82);backdrop-filter:blur(5px)}
+#levels.show{display:flex}
+#levelsCard{width:min(880px,94vw);max-height:90vh;overflow:auto;padding:26px 28px;border-radius:18px;position:relative;
+  background:linear-gradient(160deg,#0b1230,#0a0e22);border:1px solid #2a3a74;
+  box-shadow:0 0 50px rgba(33,224,255,.22),inset 0 0 30px rgba(20,40,90,.5)}
+#levelsClose{position:absolute;top:14px;right:18px;font-size:16px;color:#6f8bbf;cursor:pointer;letter-spacing:1px}
+#levelsClose:hover{color:var(--cyan)}
+#levelsTitle{font-size:20px;font-weight:800;margin:0 0 6px;letter-spacing:2px;
+  background:linear-gradient(90deg,var(--cyan),var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent}
+.lvSub{font-size:12.5px;color:#9db8e0;margin-bottom:18px;line-height:1.55}
+.lvSub b{color:var(--cyan)} .lvSub i{color:var(--violet);font-style:normal}
+#levelGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.lvCard{border:1px solid var(--line);border-radius:14px;padding:14px 16px;cursor:pointer;
+  background:#0c1430;transition:transform .1s, box-shadow .2s, border-color .2s;min-height:124px;display:flex;flex-direction:column}
+.lvCard:hover{transform:translateY(-2px)}
+.lvTop{display:flex;justify-content:space-between;align-items:center}
+.lvNum{font-size:12px;color:#6f8bbf;letter-spacing:2px}
+.lvBadge{font-size:20px;line-height:1}
+.lvName{font-size:19px;font-weight:800;color:#eaf4ff;margin-top:6px;letter-spacing:.5px}
+.lvTag{font-size:11.5px;color:var(--cyan);margin-top:3px;min-height:15px}
+.lvFoot{font-size:11.5px;color:#9db8e0;margin-top:auto;padding-top:10px;line-height:1.4}
+.lv-done{border-color:rgba(57,255,20,.5);box-shadow:0 0 18px rgba(57,255,20,.12)}
+.lv-done .lvName{color:var(--green)} .lv-done .lvFoot{color:#8ef08a}
+.lv-open{border-color:rgba(161,91,255,.55);box-shadow:0 0 18px rgba(161,91,255,.14)}
+.lv-open .lvTag{color:var(--violet)}
+.lv-todo:hover{border-color:var(--cyan);box-shadow:0 0 18px rgba(33,224,255,.18)}
+.lv-lock{opacity:.5;cursor:not-allowed} .lv-lock:hover{transform:none}

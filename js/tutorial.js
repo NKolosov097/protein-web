@@ -1,0 +1,53 @@
+/* ============================================================
+   TUTORIAL (onboarding)
+   ----------------------------------------------------------
+   Two decks: ABOUT_STEPS explains WHAT/WHY (the lock-and-key metaphor
+   + the real point), HOW_STEPS explains the controls. First visit
+   shows both back-to-back; the two buttons ("About the game" / "How
+   to play") each reopen just their own deck.
+   ============================================================ */
+const ABOUT_STEPS = [
+  { icon:'🔒', title:'Что такое рак — простыми словами',
+    body:`Представь <span class="hl">сломанный механизм</span> внутри клетки: он застрял в режиме «включено» и заставляет клетку делиться без остановки. Это и есть рак.<br><br>
+          У механизма есть уязвимое место — <span class="hlc">«карман»</span>, его «выключатель». В игре тебя ждут <b>несколько реальных раковых белков</b> (уровней) — от p53 до «неприступных» мишеней, к которым лекарства ещё нет.` },
+  { icon:'🔑', title:'Ты — с ключом в руках',
+    body:`Твоя маленькая молекула — это <span class="hlc">ключ</span> (или затычка).<br><br>
+          Задача — как в детской игрушке, где фигурку нужно вставить в подходящее по форме отверстие: <span class="hl">вставить ключ точно в карман</span> и заклинить «выключатель», чтобы механизм рака перестал работать.<br><br>
+          Ключ нужно не только подвести, но и <b>повернуть правильной стороной</b>. Чем точнее он входит в карман, тем «зеленее» шкала — значит, держится крепче.` },
+  { icon:'🔬', title:'Зачем это по-настоящему',
+    body:`Это не просто игра. Если ты найдёшь <span class="hl">форму и положение ключа</span>, при которых он прилипает крепче всего, — эти данные реально полезны учёным.<br><br>
+          Такую молекулу можно синтезировать в пробирке и сделать из неё <span class="hlc">настоящее лекарство от рака</span>. Ты буквально ищешь, чем «заткнуть» раковый белок.` },
+];
+const HOW_STEPS = [
+  { icon:'🔹', title:'Твой ключ и цель',
+    body:`Голубая молекула с подписью <span class="hlc">«ТВОЁ ЛЕКАРСТВО»</span> — это <b>молекула-кандидат в лекарство</b> (крошечное вещество, которым лечат). В игре это твой ключ, им ты управляешь.<br><br>
+          <span class="hl">Зелёный пульсирующий маркер со стрелкой «◎ ЦЕЛЬ»</span> — это карман белка («выключатель»). Веди ключ прямо в него.<br><br>
+          Карман <b>не случаен</b>: на каждом уровне это реальное уязвимое место конкретного ракового белка (например, цинковый сайт p53 или карман, куда садится настоящее лекарство). Уровни выбираются кнопкой <span class="hlc">🗂 УРОВНИ</span>.` },
+  { icon:'🎮', title:'Управление ключом — просто мышью',
+    body:`<b>Двигать:</b> <span class="hlc">схвати молекулу мышью и тащи</span> по экрану. Колесо над ней — <b>глубже/ближе</b>.<br>
+          <b>Вращать:</b> <span class="hlc">правый клик + тащи</span> — и молекула поворачивается.<br><br>
+          Сначала <span class="hl">подведи</span> ключ к зелёной метке, потом <span class="hl">поворачивай</span>, пока он не ляжет плотно (шкала: красный → жёлтый → <span class="hl">ЗЕЛЁНЫЙ = ПЛОТНО СЕЛ</span>, звучит «дзинь»).<br><br>
+          <span style="color:#9db8e0">Камеру крути, таща <b>фон</b>; сдвигай <kbd>Shift</kbd>+мышь. Клавиши тоже работают: <kbd>W</kbd>/<kbd>S</kbd>, <kbd>Q E A D Z C</kbd>.</span>` },
+  { icon:'🏆', title:'Проверь ключ и побеждай',
+    body:`Когда шкала <span class="hl">зелёная</span>, жми <span class="hlc">«▶ ТЕСТ ЛЕКАРСТВА»</span>. Получишь <b>энергию связывания</b> (ккал/моль) — насколько крепко ключ прилип.<br><br>
+          <span class="hl">Чем больше минус</span> (например −9.5), тем сильнее держится и тем больше очков, салют 🎆 и место в таблице лидеров!<br><br>
+          Кнопка <span class="hlc">🔎 ИЗУЧЕНИЕ</span> даёт навести курсор и узнать, что за что отвечает в белке.` },
+];
+let curSteps = [], tstep = 0;
+function renderTut(){
+  const s = curSteps[tstep];
+  el('tutIcon').textContent = s.icon;
+  el('tutTitle').textContent = s.title;
+  el('tutBody').innerHTML = s.body;
+  el('tutDots').innerHTML = curSteps.map((_,i)=>`<div class="dot ${i===tstep?'on':''}"></div>`).join('');
+  el('tutPrev').style.visibility = tstep===0 ? 'hidden':'visible';
+  el('tutNext').textContent = tstep===curSteps.length-1 ? '🚀 НАЧАТЬ ИГРУ' : 'Далее ▶';
+}
+function openTut(steps){ curSteps=steps; tstep=0; renderTut(); el('tut').classList.add('show'); }
+function closeTut(){ el('tut').classList.remove('show'); localStorage.setItem('pd_seen','1');
+  if(!LEVEL) loadLevel(defaultLevelIdx()); }   // after the intro, drop straight into the default level
+el('tutNext').onclick = ()=>{ tstep<curSteps.length-1 ? (tstep++, renderTut()) : closeTut(); };
+el('tutPrev').onclick = ()=>{ if(tstep>0){tstep--; renderTut();} };
+el('tutSkip').onclick = closeTut;
+el('btnAbout').onclick = ()=> openTut(ABOUT_STEPS);
+el('btnHelp').onclick  = ()=> openTut(HOW_STEPS);
