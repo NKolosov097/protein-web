@@ -1,6 +1,6 @@
 # 🧬 Protein Docker — a "drug-fitting" game
 
-**▶️ [Играть онлайн](https://NKolosov097.github.io/protein-web/)**
+**▶️ [PLAY ONLINE](https://NKolosov097.github.io/protein-web/)**
 
 A browser game featuring **real cancer-target proteins** (loaded live from the PDB) rendered
 in 3D. You steer a small drug-like molecule toward each protein's functional pocket; the game
