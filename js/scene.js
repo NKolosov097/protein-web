@@ -97,8 +97,22 @@ function onModelLoaded(atoms, myGen){
   lig.x = pocket.x + 26; lig.y = pocket.y + 14; lig.z = pocket.z + 22;
   lig.rx = lig.ry = lig.rz = 0;
 
-  // frame the protein, lifted a little so it doesn't sit low behind the bottom meter panel
-  viewer.zoomTo(); viewer.zoom(0.9); viewer.translate(0, 55); viewer.render();
+  // Frame the level so the TARGET is always front-and-centre when it opens, no matter how the
+  // player orbited the previous level. Two steps:
+  //   1. Reset the camera ORIENTATION to the default. zoomTo() re-centers and re-fits, but keeps
+  //      whatever rotation was carried over from the previous level, so we force the rotation
+  //      quaternion back to identity (the same view level 1 shows on a fresh load).
+  //   2. Centre the POCKET (not the protein centroid) on screen. zoomTo() only centres the whole
+  //      protein; the target sits away from that centroid, so we measure the pocket's screen
+  //      position and pan it to the middle (lifted 55px so it clears the bottom meter panel).
+  viewer.zoomTo();
+  const view = viewer.getView();
+  view[4] = 0; view[5] = 0; view[6] = 0; view[7] = 1;   // rotation quaternion → identity (default view)
+  viewer.setView(view);
+  viewer.zoom(0.9);
+  const ps = viewer.modelToScreen([pocket])[0], vr = el('viewer').getBoundingClientRect();
+  viewer.translate(vr.width/2 - ps.x, ps.y - vr.height/2 + 55);   // pan pocket → centre, then lift 55px
+  viewer.render();
   el('load').style.display='none';
   animate(myGen);            // loop: ligand "breathing" + recompute
 
@@ -183,9 +197,13 @@ function draw(t=0){
 
   // ---- TARGET MARKER: pulsing pocket (zinc site) ---- (coach may hide it early on)
   if(!coachHidePocket){
-    const pulse = 2.4 + 0.5*Math.sin(t*1.5);
+    // The big translucent halo normally marks the pocket, but it grows to ~2.9Å — wide enough to
+    // ENVELOP the solution-ghost drug and wash it out (it reads as a dark blinking ball hiding the
+    // hint). When the ghost is shown it already marks the spot, so shrink the halo to a small pip
+    // that sits inside the empty benzene-ring centre instead of swallowing the whole molecule.
+    const pulse = showSolution ? 1.0 + 0.15*Math.sin(t*1.5) : 2.4 + 0.5*Math.sin(t*1.5);
     viewer.addSphere({center:pocket, radius:pulse, color:'#39ff14', opacity:0.22});
-    viewer.addSphere({center:pocket, radius:0.9, color:'#39ff14', opacity:0.9});
+    if(!showSolution) viewer.addSphere({center:pocket, radius:0.9, color:'#39ff14', opacity:0.9});
     // arrow pointing INTO the pocket from "above" ON SCREEN — anchored to the camera's up
     // axis (not world-Y), so it always lines up with the target and its tip sits on the
     // marker no matter how the camera is turned. (Previously it floated off to the side.)

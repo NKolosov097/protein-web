@@ -146,9 +146,19 @@ window.addEventListener('mousemove', e=>{
     e.preventDefault(); e.stopPropagation(); return;
   }
   if(rotatingLig){
+    // Screen-relative trackball: spin the molecule about the CAMERA's own axes so the
+    // surface always follows the cursor — drag right → it turns right, drag down → down —
+    // no matter where the camera is or how the molecule is already oriented. (The old code
+    // nudged the world-space Euler angles directly, which flipped direction once the camera
+    // orbited or rx/rz went non-zero, i.e. "drag right, spins left".)
     const dx=e.clientX-lastLX, dy=e.clientY-lastLY;
     lastLX=e.clientX; lastLY=e.clientY;
-    lig.ry -= dx*0.01; lig.rx += dy*0.01;   // trackball: horizontal drag = yaw, vertical drag = pitch
+    const b=camBasis(), k=0.01;
+    let R = eulerToMat(lig.rx, lig.ry, lig.rz);
+    R = matMul3(axisAngleMat(b.up,    dx*k), R);   // horizontal drag → yaw about screen-up
+    R = matMul3(axisAngleMat(b.right, dy*k), R);   // vertical drag   → pitch about screen-right
+    const a = matToEuler(R);
+    lig.rx=a.rx; lig.ry=a.ry; lig.rz=a.rz;
     e.preventDefault(); e.stopPropagation(); return;
   }
 }, true);

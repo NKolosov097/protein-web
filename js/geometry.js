@@ -21,6 +21,41 @@ function rot(x,y,z,rx,ry,rz){
   c=Math.cos(rz);s=Math.sin(rz); [x,y]=[x*c-y*s, x*s+y*c];
   return {x,y,z};
 }
+/* ---- rotation matrices (for the screen-relative ligand trackball) ----
+   The pose is stored as Euler angles (lig.rx/ry/rz) applied by rot() in the
+   fixed order Rz·Ry·Rx. To rotate the molecule about an ARBITRARY world axis
+   (the camera's up/right) and keep that Euler representation, we convert
+   Euler→matrix, pre-multiply the incremental world rotation, then extract the
+   angles back. The matrix below is exactly rot()'s composition, so the two
+   representations stay in sync. */
+function matMul3(A,B){
+  const C=[[0,0,0],[0,0,0],[0,0,0]];
+  for(let i=0;i<3;i++)for(let j=0;j<3;j++){let s=0;for(let k=0;k<3;k++)s+=A[i][k]*B[k][j];C[i][j]=s;}
+  return C;
+}
+function eulerToMat(rx,ry,rz){
+  const cx=Math.cos(rx),sx=Math.sin(rx),cy=Math.cos(ry),sy=Math.sin(ry),cz=Math.cos(rz),sz=Math.sin(rz);
+  return [
+    [cz*cy, -sz*cx+cz*sy*sx,  sz*sx+cz*sy*cx],
+    [sz*cy,  cz*cx+sz*sy*sx, -cz*sx+sz*sy*cx],
+    [-sy,    cy*sx,            cy*cx        ],
+  ];
+}
+function matToEuler(R){
+  const ry=Math.asin(Math.max(-1,Math.min(1,-R[2][0])));
+  if(Math.abs(Math.cos(ry))>1e-6)                       // regular case
+    return {rx:Math.atan2(R[2][1],R[2][2]), ry, rz:Math.atan2(R[1][0],R[0][0])};
+  return {rx:Math.atan2(-R[1][2],R[1][1]), ry, rz:0};   // gimbal lock
+}
+// rotation about a world unit axis by `ang` radians (Rodrigues' formula)
+function axisAngleMat(ax, ang){
+  const [x,y,z]=ax, c=Math.cos(ang), s=Math.sin(ang), t=1-c;
+  return [
+    [t*x*x+c,   t*x*y-s*z, t*x*z+s*y],
+    [t*x*y+s*z, t*y*y+c,   t*y*z-s*x],
+    [t*x*z-s*y, t*y*z+s*x, t*z*z+c  ],
+  ];
+}
 function dist(a,b){const dx=a.x-b.x,dy=a.y-b.y,dz=a.z-b.z;return Math.sqrt(dx*dx+dy*dy+dz*dz)}
 function norm(v){const m=Math.hypot(v[0],v[1],v[2])||1;return [v[0]/m,v[1]/m,v[2]/m];}
 function cross(a,b){return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];}
