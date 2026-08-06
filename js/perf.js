@@ -58,3 +58,23 @@ function setQualityPref(pref){
   localStorage.setItem('pd_quality', pref);
   location.reload();
 }
+
+/* ---------- кнопка «ГРАФИКА» ----------
+   Циклический перебор auto → low → high → auto. Подпись показывает
+   текущее предпочтение и, для auto, что оно выбрало на этом устройстве. */
+function nextQualityPref(pref){
+  if(pref === 'auto') return 'low';
+  if(pref === 'low')  return 'high';
+  if(pref === 'high') return 'auto';
+  return 'low';
+}
+function syncQualityBtn(){
+  const b = el('btnQuality');
+  if(!b) return;
+  const name = QUALITY_PREF === 'auto' ? ('АВТО (' + (qLow() ? 'лёгкая' : 'красивая') + ')')
+             : QUALITY_PREF === 'low'  ? 'ЛЁГКАЯ'
+             : 'КРАСИВАЯ';
+  b.textContent = '⚙ ГРАФИКА: ' + name;
+}
+if(el('btnQuality')) el('btnQuality').onclick = ()=> setQualityPref(nextQualityPref(QUALITY_PREF));
+syncQualityBtn();

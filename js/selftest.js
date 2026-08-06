@@ -26,6 +26,12 @@ function runSelfTest(){
   stEq('resolveQuality: явный low перебивает',  resolveQuality('low',   false), 'low');
   stEq('resolveQuality: явный high перебивает', resolveQuality('high',  true),  'high');
   stEq('resolveQuality: мусор → как auto',      resolveQuality('bogus', true),  'low');
+
+  // ---- perf: цикл предпочтения качества ----
+  stEq('nextQualityPref: auto → low',  nextQualityPref('auto'), 'low');
+  stEq('nextQualityPref: low → high',  nextQualityPref('low'),  'high');
+  stEq('nextQualityPref: high → auto', nextQualityPref('high'), 'auto');
+  stEq('nextQualityPref: мусор → low', nextQualityPref('zzz'),  'low');
 }
 
 if(SELFTEST){
