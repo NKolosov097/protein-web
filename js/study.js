@@ -174,6 +174,9 @@ el('btnInfo').onclick = ()=>{
   if(!LEVEL && !infoMode){ showToast(t('toast.pickFirst')); return; }
   setInfoMode(!infoMode);
 };
+// the caption carries the on/off state, so it has no data-i18n and index.html only
+// holds a placeholder — translate it once at load, like syncSolveBtn() does in hud.js
+syncInfoBtn();
 
 // custom nearest-atom picking under the cursor (via 3D→screen projection).
 // PRIMARY criterion is proximity to the cursor on screen, so we always highlight the

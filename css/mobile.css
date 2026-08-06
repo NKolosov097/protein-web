@@ -64,6 +64,12 @@
   #actionsRest button{min-height:48px;font-size:14px}
   #sheetBack.show{display:block;position:fixed;inset:0;z-index:70;
     background:rgba(2,4,12,.6);backdrop-filter:blur(2px)}
+  /* The sheet is nested inside #bottomBar, and #bottomBar is position:fixed —
+     i.e. its own stacking context, so the z-index:71 above cannot escape it.
+     Left alone, the scrim (z:70, a direct child of <body>) paints over the
+     sheet and a tap on ☰ only blurs the screen. Lift the whole bar above the
+     scrim while the sheet is open; the sheet covers the bar's own panels. */
+  body.sheetOpen #bottomBar{z-index:71}
 
   /* ---------- leaderboard as a modal ---------- */
   #lb.asModal{display:block;position:fixed;z-index:72;left:12px;right:12px;top:50%;
@@ -77,6 +83,15 @@
   #tutBody{font-size:13.5px;min-height:0}
   #tutSkip, #levelsClose{min-width:44px;min-height:44px;font-size:13px;
     display:flex;align-items:center;justify-content:flex-end;top:8px;right:10px}
+  /* The ✕ control is absolutely positioned in the card's top-right corner, where a
+     title that wraps (and its width differs per language) runs underneath it. On a
+     phone put it in the flow instead — its own right-aligned row above the title, so
+     no overlap is possible at any label length — and give it a chip so it reads as
+     a button on the dark card rather than as dim grey text. */
+  #levelsCard{display:flex;flex-direction:column}
+  #levelsClose{position:static;align-self:flex-end;flex:none;margin-bottom:6px;
+    justify-content:center;padding:0 14px;border-radius:11px;
+    background:#0e1738;border:1px solid var(--line);color:var(--txt)}
   .cdPreviewWrap{height:150px}
 
   /* ---------- coach: full-width narration bubble ---------- */
@@ -88,6 +103,13 @@
      needed (step 3), otherwise the narration bubble covers it */
   body.coaching #modeBar{display:none}
   body.coaching.coach-modes #modeBar{display:flex}
+  /* styles.css hides the whole #actions panel until the final TEST step. On a
+     phone the ☰ sheet lives inside that panel and hides itself with a transform,
+     so that rule would leave ☰ opening an empty, zero-height sheet. Hide only the
+     TEST button here — that is what the rule is actually about. */
+  body.coaching #actions{display:flex !important}
+  body.coaching #btnDock{display:none}
+  body.coaching.coach-actions #btnDock{display:block}
 
   /* ---------- study-mode tooltip — as a bottom sheet ---------- */
   #tip.sheet{left:6px !important;right:6px !important;top:auto !important;

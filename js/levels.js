@@ -71,8 +71,13 @@ function renderLevels(){
 }
 function openLevels(){ renderLevels(); el('levels').classList.add('show'); }
 function closeLevels(){ el('levels').classList.remove('show'); }
-el('btnLevels').onclick   = ()=> openLevels();
-el('levelsClose').onclick = ()=>{
-  closeLevels();                       // the ✕ always closes the picker
+// the ✕ always closes the picker; if no target is loaded yet, remind why one is needed
+function dismissLevels(){
+  closeLevels();
   if(!LEVEL) showToast(t('lv.pickToast'), 2600);
-};
+}
+el('btnLevels').onclick   = ()=> openLevels();
+el('levelsClose').onclick = dismissLevels;
+// a tap on the dimmed area outside the card dismisses it too (the ✕ and the card
+// itself are other targets, so this only fires for the backdrop)
+el('levels').onclick = e=>{ if(e.target === el('levels')) dismissLevels(); };
