@@ -111,6 +111,8 @@ function drugCenter(){ return minDistance(0).center; }
 function coachGoto(n){
   coachStep = n;
   document.body.classList.toggle('coach-actions', n===5);   // action menu only for the TEST step
+  // the mode switcher is needed from step 3 on (before that the bubble covers it)
+  document.body.classList.toggle('coach-modes', n>=3);
   const P = pocket;
   const NM = LEVEL ? LEVEL.name : 'этот белок';
   switch(n){
@@ -152,9 +154,11 @@ function coachGoto(n){
         viewer.zoom(1.05);
         recenter(mid);
       }), 900);
-      coachBubble('🖱',
-        `Схвати лекарство мышью и <b>веди по светящейся дорожке</b> прямо в карман. ` +
-        `Не бойся промахнуться — сейчас ключ сам держится трека.`, false);
+      coachBubble(IS_TOUCH ? '👆' : '🖱', IS_TOUCH
+        ? `Проведи <b>пальцем по светящейся дорожке</b> — лекарство пойдёт за ним прямо в карман. ` +
+          `Не бойся промахнуться — сейчас ключ сам держится трека.`
+        : `Схвати лекарство мышью и <b>веди по светящейся дорожке</b> прямо в карман. ` +
+          `Не бойся промахнуться — сейчас ключ сам держится трека.`, false);
       break;
     }
     case 4:   // ---- rotate to seat (reference ghost blinks) ----
@@ -165,9 +169,11 @@ function coachGoto(n){
       // zoom into the pocket, keeping step 3's turned/tilted orientation; the tween goes straight
       // there so there's no jarring pull-back to the whole protein.
       tweenView(captureTarget(()=>{ viewer.zoomTo({}); viewer.zoom(1.7); recenter(pocket); }), 700);
-      coachBubble('🔄',
-        `Ты у кармана! Теперь <b>поверни</b> лекарство (<span class="hlc">правый клик + мышь</span>) ` +
-        `и подведи вплотную, чтобы оно легло как <b>моргающий эталон</b>. Когда сядет плотно — появится кнопка «Тест».`, false);
+      coachBubble('🔄', IS_TOUCH
+        ? `Ты у кармана! Переключись внизу на <span class="hlc">🔄 ВРАЩАТЬ</span> и <b>поверни</b> лекарство ` +
+          `пальцем, чтобы оно легло как <b>моргающий эталон</b>. Когда сядет плотно — появится кнопка «Тест».`
+        : `Ты у кармана! Теперь <b>поверни</b> лекарство (<span class="hlc">правый клик + мышь</span>) ` +
+          `и подведи вплотную, чтобы оно легло как <b>моргающий эталон</b>. Когда сядет плотно — появится кнопка «Тест».`, false);
       break;
     case 5:   // ---- press TEST ----
       coachBlinkDrug = false; coachMagnet = false; coachTrack = null;
@@ -204,7 +210,7 @@ function coachShapes(world, center){
     const r = el('viewer').getBoundingClientRect();
     cur.style.left = (r.left + s.x) + 'px';
     cur.style.top  = (r.top  + s.y) + 'px';
-    cur.querySelector('.cc-tip').textContent = 'схвати и веди в карман';
+    cur.querySelector('.cc-tip').textContent = IS_TOUCH ? 'веди пальцем в карман' : 'схвати и веди в карман';
     cur.style.display = 'block';
   } else {
     cur.style.display = 'none';
@@ -237,7 +243,7 @@ function endCoach(){
   coachActive = false; coachStep = -1;
   coachHidePocket = coachHideDrug = coachBlinkDrug = coachMagnet = false;
   coachTrack = null;
-  document.body.classList.remove('coaching', 'coach-actions');
+  document.body.classList.remove('coaching', 'coach-actions', 'coach-modes');
   el('btnDock').classList.remove('pulse');
   el('coach').classList.remove('show');
   el('coachCursor').style.display = 'none';

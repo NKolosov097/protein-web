@@ -152,11 +152,14 @@ function addStudyTarget(){
 function removeStudyTarget(){
   if(studyTargetLabel){ viewer.removeLabel(studyTargetLabel); studyTargetLabel=null; }
 }
+function syncInfoBtn(){
+  el('btnInfo').textContent = infoMode ? '🔎 ИЗУЧЕНИЕ: ВКЛ' : '🔎 ИЗУЧЕНИЕ';
+  el('btnInfo').classList.toggle('b-dock', infoMode);
+  el('btnInfo').classList.toggle('b-ghost', !infoMode);
+}
 function setInfoMode(on){
   infoMode=on; hoverInfo=null;
-  el('btnInfo').textContent = on ? '🔎 ИЗУЧЕНИЕ: ВКЛ' : '🔎 ИЗУЧЕНИЕ';
-  el('btnInfo').classList.toggle('b-dock', on);
-  el('btnInfo').classList.toggle('b-ghost', !on);
+  syncInfoBtn();
   el('viewer').style.cursor = on ? 'crosshair' : '';
   if(on){
     viewer.removeAllShapes(); viewer.removeAllLabels();  // clear leftover gameplay ligand/target
@@ -265,5 +268,18 @@ el('viewer').addEventListener('mousemove', e=>{
 });
 el('viewer').addEventListener('mouseleave', ()=>{ hoverInfo=null; clearHi(); hideTip(); });
 
-// tap on the scene in study mode (the mobile counterpart of hover). Full version — Task 12.
-function studyTap(mx, my){ pickAtom(mx, my); }
+/* ---------- study mode on touch ----------
+   A phone has no hover, so the tooltip is summoned by a tap, and the #tip plate
+   itself is pinned full-width to the bottom of the screen (class .sheet, styles
+   in css/mobile.css) — placing it at the pointer is pointless, the finger would
+   cover it. Another tap on empty space dismisses it. */
+function studyTap(mx, my){
+  pickAtom(mx, my);
+  if(hoverInfo){
+    const t = el('tip');
+    t.classList.add('sheet');
+    showTip(hoverInfo.text, 0, 0);   // the position comes from css/mobile.css
+  } else {
+    hideTip();
+  }
+}
