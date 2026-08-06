@@ -73,9 +73,10 @@ function levelLoadError(){
 
 // build the scene once a structure's atoms are in
 function onModelLoaded(atoms, myGen){
-  // STAGE 1 look: translucent surface + cartoon + neon hetero spheres
+  // STAGE 1 look: translucent surface + cartoon + neon hetero spheres.
+  // Поверхность строится ПОСЛЕ поиска кармана (ниже): на профиле 'low' её
+  // селектор — остатки вокруг цели, а карман к этому моменту ещё не найден.
   viewer.setStyle({}, { cartoon:{ color:'spectrum' } });
-  addProteinSurface(0.55);
   viewer.setStyle({ hetflag:true }, { sphere:{ scale:0.4, color:'magenta' } });
   viewer.setStyle({ resn:['HOH','WAT'] }, {});   // hide crystallographic water (clutter, and it looks like the target)
   viewer.setStyle(METAL_SEL, { sphere:{ scale:0.6, color:'#ffcc33' } });   // structural metal ions (incl. the Zn target) — gold, not magenta
@@ -95,6 +96,7 @@ function onModelLoaded(atoms, myGen){
   const pk = findPocket(proteinAtoms);
   pocket = pk.pos; POCKET_LABEL = pk.label;
   POCKET_ATOMS = buildPocketAtoms();   // protein wall around the target → shape-fit scoring
+  addProteinSurface(0.55);             // теперь известен карман → на 'low' поверхность только вокруг него
 
   // ligand starts outside so the player guides it toward the target
   lig.x = pocket.x + 26; lig.y = pocket.y + 14; lig.z = pocket.z + 22;
@@ -134,9 +136,39 @@ function onModelLoaded(atoms, myGen){
 /* ---------- protein surface ---------- */
 // (Re)build the VDW surface at a given opacity. Recreating it is the only reliable way
 // to change its transparency — setSurfaceMaterialStyle often has no visible effect.
+/* Селектор «остатки рядом с карманом» для облегчённой поверхности.
+   Собирается из тех же атомов, что и POCKET_ATOMS (см. buildPocketAtoms
+   в scoring.js), но радиусом пошире: поверхность должна закрывать стенку
+   кармана целиком, а не только зону контакта. Возвращает null, если
+   карман ещё не найден — тогда вызывающий строит поверхность как раньше. */
+const SURF_R = 16;
+function pocketResidueSel(){
+  if(!pocket || !proteinAtoms.length) return null;
+  const R2 = SURF_R*SURF_R, byChain = {};
+  for(const a of proteinAtoms){
+    if(a.het) continue;
+    const dx=a.x-pocket.x, dy=a.y-pocket.y, dz=a.z-pocket.z;
+    if(dx*dx+dy*dy+dz*dz > R2) continue;
+    const c = a.chain || '';
+    (byChain[c] = byChain[c] || new Set()).add(a.resi);
+  }
+  const chains = Object.keys(byChain);
+  if(!chains.length) return null;
+  // 3Dmol понимает {chain:[...], resi:[...]} как пересечение множеств.
+  // Остатки с одинаковым номером в разных цепях тоже попадут — для
+  // полупрозрачной подсветки кармана это приемлемо и заметно дешевле,
+  // чем строить поверхность отдельным вызовом на каждую цепь.
+  const resi = [];
+  chains.forEach(c => byChain[c].forEach(r => resi.push(r)));
+  return { hetflag:false, chain:chains, resi:resi };
+}
+
 function addProteinSurface(op){
+  // на 'low' — только стенка кармана вместо всего белка: прозрачная VDW
+  // поверхность на всю структуру самая дорогая часть кадра по fill-rate
+  const sel = (qLow() && pocketResidueSel()) || {hetflag:false};
   const surfP = viewer.addSurface($3Dmol.SurfaceType.VDW,
-    {opacity:op, colorscheme:'cyanCarbon'}, {hetflag:false});
+    {opacity:op, colorscheme:'cyanCarbon'}, sel);
   Promise.resolve(surfP).then(ret=>{
     SURF = (ret && typeof ret==='object' && 'surfid' in ret) ? ret.surfid : ret;
   }).catch(()=>{});
