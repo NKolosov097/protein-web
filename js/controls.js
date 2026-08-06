@@ -175,3 +175,18 @@ el('viewer').addEventListener('mousemove', e=>{
   const r=el('viewer').getBoundingClientRect();
   el('viewer').style.cursor = ligHit(e.clientX-r.left, e.clientY-r.top) ? 'grab' : '';
 });
+
+/* ---------- ТАЧ: только флаг «камера в работе» ----------
+   3Dmol сам вешает touchstart/touchmove/touchend на свой canvas и
+   маппит их на собственные mouse-обработчики, поэтому орбита и пинч
+   на телефоне работали и раньше. Чего не хватало — camInteracting:
+   он выставлялся ТОЛЬКО в mouse-ветке, из-за чего animate() не
+   замирал во время тач-вращения и каждые 45 мс пересобирал шейпы и
+   делал второй render поверх рендера 3Dmol. Отсюда и подвисания.
+
+   Здесь обрабатывается только флаг. Полное управление молекулой
+   пальцем добавляется в js/controls.js ниже (см. план, Task 10). */
+el('viewer').addEventListener('touchstart', ()=>{ camInteracting = true; }, {passive:true, capture:true});
+function releaseCamTouch(e){ camInteracting = e.touches.length > 0; }
+el('viewer').addEventListener('touchend',    releaseCamTouch, {passive:true, capture:true});
+el('viewer').addEventListener('touchcancel', releaseCamTouch, {passive:true, capture:true});

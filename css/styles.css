@@ -6,7 +6,9 @@
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);
   font-family:"Segoe UI",system-ui,sans-serif;overflow:hidden}
-#viewer{position:fixed;inset:0;width:100vw;height:100vh}
+/* touch-action:none — иначе на телефоне жест по сцене скроллит страницу,
+   а двойной тап зумит вёрстку вместо структуры */
+#viewer{position:fixed;inset:0;width:100vw;height:100vh;touch-action:none}
 /* neon grid backdrop */
 body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
   background:
