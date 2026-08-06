@@ -39,6 +39,19 @@ h1{font-size:15px;letter-spacing:3px;margin:0 0 2px;
 .iconBtn.on{background:linear-gradient(90deg,var(--green),#00d4a0);color:#001018;
   border-color:transparent;box-shadow:0 0 14px rgba(57,255,20,.45)}
 
+/* language dropdown (🌐) */
+#langWrap{position:relative;flex:none}
+#langMenu{display:none;position:absolute;top:46px;right:0;z-index:12;min-width:150px;
+  padding:6px;border-radius:12px;background:#0b1230;border:1px solid #2a3a74;
+  box-shadow:0 8px 30px rgba(0,0,0,.6)}
+#langMenu.show{display:block}
+#langMenu button{display:block;width:100%;text-align:left;min-height:44px;
+  background:transparent;color:var(--txt);border:none;border-radius:8px;
+  padding:10px 12px;font-size:13px;letter-spacing:.5px;font-weight:600}
+#langMenu button:hover{background:#132155;color:var(--cyan)}
+#langMenu button.on{color:var(--cyan)}
+#langMenu button.on::after{content:'✓';float:right}
+
 /* top-right score */
 #score{top:16px;right:16px;padding:14px 20px;text-align:right;min-width:190px}
 #scoreVal{font-size:34px;font-weight:800;color:var(--cyan);text-shadow:0 0 18px var(--cyan);line-height:1}

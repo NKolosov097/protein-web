@@ -6,37 +6,44 @@
 
 <div id="viewer"></div>
 
-<div id="load"><div class="spin"></div><div id="loadTxt">ЗАГРУЗКА СТРУКТУРЫ…</div></div>
+<div id="load"><div class="spin"></div><div id="loadTxt" data-i18n="load.default">ЗАГРУЗКА СТРУКТУРЫ…</div></div>
 
 <div id="hdr" class="panel">
   <div id="hdrText">
     <h1>PROTEIN&nbsp;DOCKER</h1>
-    <div class="sub" id="hdrSub">МИШЕНЬ: —</div>
+    <div class="sub" id="hdrSub" data-i18n="hdr.targetNone">МИШЕНЬ: —</div>
     <!-- on mobile the score moves here: the #score panel is hidden there -->
     <div class="sub mobileOnly" id="hdrScore"></div>
   </div>
-  <button class="iconBtn" id="btnSound" title="Звук вкл/выкл">🔇</button>
-  <button class="iconBtn mobileOnly" id="btnMenu" title="Меню">☰</button>
+  <button class="iconBtn" id="btnSound" data-i18n-title="btn.sound.title">🔇</button>
+  <div id="langWrap">
+    <button class="iconBtn" id="btnLang" data-i18n-title="btn.lang.title">🌐</button>
+    <div id="langMenu">
+      <button data-lang="en">English</button>
+      <button data-lang="ru">Русский</button>
+    </div>
+  </div>
+  <button class="iconBtn mobileOnly" id="btnMenu" data-i18n-title="btn.menu.title">☰</button>
 </div>
 
 <div id="score" class="panel">
-  <div class="sub">СЧЁТ</div>
+  <div class="sub" data-i18n="score.label">СЧЁТ</div>
   <div id="scoreVal">0</div>
   <div id="best">РЕКОРД: 0</div>
 </div>
 
 <div id="lb" class="panel">
-  <h2>◆ ЛИДЕРЫ</h2>
+  <h2 data-i18n="board.title">◆ ЛИДЕРЫ</h2>
   <ol id="lbList"></ol>
 </div>
 
 <div id="help" class="panel">
-  <div><b>ЛЕКАРСТВО</b> <span style="color:#6f8bbf">(мышь)</span></div>
-  <div>🖱 тащи молекулу — двигать</div>
-  <div>🖱 правый клик + тащи — вращать</div>
-  <div>колесо над молекулой — глубже / ближе</div>
-  <div style="margin-top:6px;color:#6f8bbf"><b style="color:var(--cyan)">КАМЕРА:</b> тащи фон — поворот · <kbd>Shift</kbd>+мышь — сдвиг · колесо — зум</div>
-  <div style="margin-top:5px;color:#6f8bbf">Клавиши: <kbd>← ↑ → ↓</kbd> <kbd>W</kbd>/<kbd>S</kbd> двигать · <kbd>Q E A D Z C</kbd> вращать</div>
+  <div data-i18n-html="help.title"></div>
+  <div data-i18n="help.move"></div>
+  <div data-i18n="help.rotate"></div>
+  <div data-i18n="help.wheel"></div>
+  <div style="margin-top:6px;color:#6f8bbf" data-i18n-html="help.camera"></div>
+  <div style="margin-top:5px;color:#6f8bbf" data-i18n-html="help.keys"></div>
 </div>
 
 <!-- The bottom panels live in one wrapper: on desktop it is display:contents
@@ -45,34 +52,34 @@
 <div id="bottomBar">
 
   <div id="modeBar" class="mobileOnly">
-    <button data-mode="move" class="on">✋ ДВИГАТЬ</button>
-    <button data-mode="rotate">🔄 ВРАЩАТЬ</button>
-    <button data-mode="depth">↕ ГЛУБИНА</button>
+    <button data-mode="move" class="on" data-i18n="mode.move">✋ ДВИГАТЬ</button>
+    <button data-mode="rotate" data-i18n="mode.rotate">🔄 ВРАЩАТЬ</button>
+    <button data-mode="depth" data-i18n="mode.depth">↕ ГЛУБИНА</button>
   </div>
 
   <div id="meter" class="panel">
-    <div id="mission">🎯 <b>Задача:</b> приведи молекулу-ключ в зелёный карман и заткни «выключатель» рака</div>
-    <div class="mrow"><span>КОНТАКТ С КАРМАНОМ</span><span id="status">—</span></div>
+    <div id="mission" data-i18n-html="mission.closed"></div>
+    <div class="mrow"><span data-i18n="meter.contact">КОНТАКТ С КАРМАНОМ</span><span id="status">—</span></div>
     <div class="bar"><div id="barFill"></div></div>
     <div id="hint">—</div>
     <div class="mrow" style="margin-top:6px;color:#6f8bbf">
-      <span>до цели: <b id="distVal">—</b> Å</span>
-      <span>≤ 5 Å = в кармане</span>
+      <span><span data-i18n="meter.distLabel">до цели:</span> <b id="distVal">—</b> Å</span>
+      <span data-i18n="meter.inPocket">≤ 5 Å = в кармане</span>
     </div>
   </div>
 
   <div id="actions" class="panel">
-    <button class="b-dock" id="btnDock">▶ ТЕСТ ЛЕКАРСТВА</button>
+    <button class="b-dock" id="btnDock" data-i18n="btn.dock">▶ ТЕСТ ЛЕКАРСТВА</button>
     <!-- on mobile this block slides away into the bottom sheet behind ☰ -->
     <div id="actionsRest">
       <button class="b-ghost" id="btnSolve">💡 ПОДСКАЗКА</button>
-      <button class="b-ghost" id="btnLevels">🗂 УРОВНИ</button>
+      <button class="b-ghost" id="btnLevels" data-i18n="btn.levels">🗂 УРОВНИ</button>
       <button class="b-ghost" id="btnInfo">🔎 ИЗУЧЕНИЕ</button>
-      <button class="b-ghost" id="btnCoach">🎓 ОБУЧЕНИЕ</button>
-      <button class="b-ghost" id="btnReset">↺ СБРОС</button>
-      <button class="b-ghost" id="btnGuide">❓ ОБ ИГРЕ</button>
+      <button class="b-ghost" id="btnCoach" data-i18n="btn.coach">🎓 ОБУЧЕНИЕ</button>
+      <button class="b-ghost" id="btnReset" data-i18n="btn.reset">↺ СБРОС</button>
+      <button class="b-ghost" id="btnGuide" data-i18n="btn.guide">❓ ОБ ИГРЕ</button>
       <button class="b-ghost" id="btnQuality">⚙ ГРАФИКА</button>
-      <button class="b-ghost mobileOnly" id="btnBoard">🏆 ЛИДЕРЫ</button>
+      <button class="b-ghost mobileOnly" id="btnBoard" data-i18n="btn.board">🏆 ЛИДЕРЫ</button>
     </div>
   </div>
 
@@ -83,10 +90,10 @@
 
 <div id="tut">
   <div id="tutCard">
-    <div id="tutSkip">ПРОПУСТИТЬ ✕</div>
+    <div id="tutSkip" data-i18n="tut.skip">ПРОПУСТИТЬ ✕</div>
     <div class="tutTabs">
-      <button class="tutTab" id="tutTabAbout">О ЧЁМ ИГРА</button>
-      <button class="tutTab" id="tutTabHow">КАК ИГРАТЬ</button>
+      <button class="tutTab" id="tutTabAbout" data-i18n="tut.tabAbout">О ЧЁМ ИГРА</button>
+      <button class="tutTab" id="tutTabHow" data-i18n="tut.tabHow">КАК ИГРАТЬ</button>
     </div>
     <div id="tutIcon">🧬</div>
     <h2 id="tutTitle"></h2>
@@ -103,11 +110,9 @@
 
 <div id="levels">
   <div id="levelsCard">
-    <div id="levelsClose">ЗАКРЫТЬ ✕</div>
-    <h2 id="levelsTitle">🎯 ВЫБЕРИ РАКОВУЮ МИШЕНЬ</h2>
-    <div class="lvSub">Каждый уровень — <b>настоящий</b> раковый белок из базы PDB.
-      <b>✔</b> — мишени, к которым лекарство уже подобрали (повтори успех учёных).
-      <i>🔬</i> — мишени, к которым лекарства <i>ещё нет ни у кого</i>: они <i>открыты сразу</i>, тут нет «правильного ответа», любой твой результат — вклад в реальный поиск.</div>
+    <div id="levelsClose" data-i18n="levels.close">ЗАКРЫТЬ ✕</div>
+    <h2 id="levelsTitle" data-i18n="levels.title">🎯 ВЫБЕРИ РАКОВУЮ МИШЕНЬ</h2>
+    <div class="lvSub" data-i18n-html="levels.sub"></div>
     <div id="levelGrid"></div>
   </div>
 </div>
@@ -117,7 +122,7 @@
 
 <!-- guided-tutorial narration bubble + blinking "grab here" cursor (see js/coach.js) -->
 <div id="coach">
-  <div id="coachSkip">ПРОПУСТИТЬ ОБУЧЕНИЕ ✕</div>
+  <div id="coachSkip" data-i18n="coach.skip">ПРОПУСТИТЬ ОБУЧЕНИЕ ✕</div>
   <div id="coachIcon">🧬</div>
   <div id="coachText"></div>
   <button class="b-dock" id="coachNext">Далее ▶</button>
@@ -142,6 +147,8 @@
      loaded in dependency order:
        state      → shared game state + DOM helper (must be first)
        perf       → graphics quality profile (caps devicePixelRatio on load)
+       lang-en/ru → flat translation dictionaries
+       i18n       → t()/applyI18n() runtime + the 🌐 language dropdown
        levels-data→ the LEVELS table (real PDB cancer targets)
        geometry   → pure math (vectors, rotation, camera basis)
        scoring    → pocket finding + shape-contact binding energy
@@ -158,6 +165,9 @@
      ============================================================ -->
 <script src="js/state.js"></script>
 <script src="js/perf.js"></script>
+<script src="js/lang-en.js"></script>
+<script src="js/lang-ru.js"></script>
+<script src="js/i18n.js"></script>
 <script src="js/levels-data.js"></script>
 <script src="js/geometry.js"></script>
 <script src="js/scoring.js"></script>

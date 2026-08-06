@@ -41,6 +41,32 @@ function runSelfTest(){
   stEq('projectOnSegment: точка на отрезке',projectOnSegment({x:2,  y:0, z:0}, A, B), {x:2, y:0, z:0});
   stEq('projectOnSegment: вырожденный отрезок',
        projectOnSegment({x:4,y:4,z:4}, {x:1,y:1,z:1}, {x:1,y:1,z:1}), {x:1,y:1,z:1});
+
+  // ---- i18n: language choice on the first visit ----
+  stEq('pickLang: сохранён ru',        pickLang('ru',   'en-US'), 'ru');
+  stEq('pickLang: сохранён en',        pickLang('en',   'ru-RU'), 'en');
+  stEq('pickLang: мусор → браузер',    pickLang('zz',   'ru-RU'), 'ru');
+  stEq('pickLang: пусто + ru-RU',      pickLang(null,   'ru-RU'), 'ru');
+  stEq('pickLang: пусто + ru',         pickLang(null,   'ru'),    'ru');
+  stEq('pickLang: пусто + ru-BY',      pickLang(null,   'ru-BY'), 'ru');
+  stEq('pickLang: пусто + en-GB',      pickLang(null,   'en-GB'), 'en');
+  stEq('pickLang: пусто + de',         pickLang(null,   'de'),    'en');
+  stEq('pickLang: пусто + пусто',      pickLang(null,   ''),      'en');
+  stEq('pickLang: "rue" не русский',   pickLang(null,   'rue'),   'en');
+
+  // ---- i18n: interpolation and missing keys ----
+  const savedLang = LANG;
+  LANG = 'en';
+  stEq('t: подстановка',        t('selftest.vars', {name:'p53', n:7}), 'p53 has 7');
+  stEq('t: лишние скобки целы', t('selftest.vars', {name:'x'}),        'x has {{n}}');
+  stEq('t: нет ключа → ключ',   t('selftest.absent.key'),              'selftest.absent.key');
+  stEq('numFmt: en',            numFmt(1234567),                        '1,234,567');
+  LANG = 'ru';
+  // ru-RU puts a non-breaking or narrow no-break space between groups
+  // (U+00A0 / U+202F) — which one depends on the browser, so we compare via a
+  // substitution instead of a literal with a plain space (otherwise it flakes)
+  stEq('numFmt: ru', numFmt(1234567).replace(/[\s\u00A0\u202F]/g, '_'), '1_234_567');
+  LANG = savedLang;
 }
 
 if(SELFTEST){
