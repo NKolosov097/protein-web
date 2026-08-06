@@ -108,32 +108,46 @@ function coachBubble(icon, html, showNext){
 // current drug centre (no breathing) — the track start / camera focus
 function drugCenter(){ return minDistance(0).center; }
 
+/* The narration lines per step, as a table, so the same line can be re-rendered
+   on a language switch (coachRefreshBubble) without flying the camera again and
+   without rebuilding the magnetic track. */
+const COACH_BUBBLES = [
+  ()=>['🧬', t('coach.0', {name: LEVEL ? levelName(LEVEL) : t('coach.thisProtein')}), true],
+  ()=>['🔑', t('coach.1'), true],
+  ()=>['🎯', t('coach.2'), true],
+  ()=>[IS_TOUCH ? '👆' : '🖱', t(IS_TOUCH ? 'coach.3.touch' : 'coach.3.mouse'), false],
+  ()=>['🔄', t(IS_TOUCH ? 'coach.4.touch' : 'coach.4.mouse'), false],
+  ()=>['✅', t('coach.5'), false],
+];
+function coachRefreshBubble(){
+  const make = COACH_BUBBLES[coachStep];
+  if(!coachActive || !make) return;
+  const b = make();
+  coachBubble(b[0], b[1], b[2]);
+}
+
 function coachGoto(n){
   coachStep = n;
   document.body.classList.toggle('coach-actions', n===5);   // action menu only for the TEST step
   // the mode switcher is needed from step 3 on (before that the bubble covers it)
   document.body.classList.toggle('coach-modes', n>=3);
   const P = pocket;
-  const NM = LEVEL ? levelName(LEVEL) : t('coach.thisProtein');
   switch(n){
     case 0:   // ---- overview: just the protein (pulled back so it fits), no pocket, no drug ----
       coachHidePocket = true; coachHideDrug = true; coachBlinkDrug = false; coachMagnet = false;
       coachTrack = null; showSolution = false; syncSolveBtn();
       // whole cell, pulled back a bit and lifted so it doesn't sit behind the bottom bubble
       tweenView(captureTarget(()=>{ viewer.zoomTo({}); viewer.zoom(0.72); viewer.translate(0, 30); }), 800);
-      coachBubble('🧬', t('coach.0', {name:NM}), true);
       break;
     case 1:   // ---- the drug (centre it up close) ----
       coachHidePocket = true; coachHideDrug = false; coachBlinkDrug = true; coachMagnet = false;
       coachTrack = null;
       flightTo(drugCenter, 1.7, 800, {face:true});
-      coachBubble('🔑', t('coach.1'), true);
       break;
     case 2:   // ---- the pocket: it's on the far side, so TURN the protein to face it ----
       coachHidePocket = false; coachHideDrug = false; coachBlinkDrug = false; coachMagnet = false;
       coachTrack = null;
       flightTo(()=>pocket, 1.9, 800, {face:true});
-      coachBubble('🎯', t('coach.2'), true);
       break;
     case 3: {  // ---- guide along the magnetic track: show both ends, tilted so the pocket is clear ----
       coachHidePocket = false; coachHideDrug = false; coachBlinkDrug = true; coachMagnet = true;
@@ -148,7 +162,6 @@ function coachGoto(n){
         viewer.zoom(1.05);
         recenter(mid);
       }), 900);
-      coachBubble(IS_TOUCH ? '👆' : '🖱', t(IS_TOUCH ? 'coach.3.touch' : 'coach.3.mouse'), false);
       break;
     }
     case 4:   // ---- rotate to seat (reference ghost blinks) ----
@@ -159,16 +172,15 @@ function coachGoto(n){
       // zoom into the pocket, keeping step 3's turned/tilted orientation; the tween goes straight
       // there so there's no jarring pull-back to the whole protein.
       tweenView(captureTarget(()=>{ viewer.zoomTo({}); viewer.zoom(1.7); recenter(pocket); }), 700);
-      coachBubble('🔄', t(IS_TOUCH ? 'coach.4.touch' : 'coach.4.mouse'), false);
       break;
     case 5:   // ---- press TEST ----
       coachBlinkDrug = false; coachMagnet = false; coachTrack = null;
       el('btnDock').classList.add('pulse');
-      coachBubble('✅', t('coach.5'), false);
       // pre-render the next target's 3D preview so the success modal can show it instantly
       { const nxt = LEVELS[LEVEL_IDX+1]; if(nxt) renderLevelPreview(nxt.pdb); }
       break;
   }
+  coachRefreshBubble();   // the line's text comes from the COACH_BUBBLES table
 }
 
 /* ---------- per-frame hook (called from draw in scene.js) ----------

@@ -64,9 +64,46 @@ function applyI18n(root){
   r.querySelectorAll('[data-i18n-title]').forEach(n=>{ n.title = t(n.dataset.i18nTitle); });
 }
 
-/* filled in Task 16: repaint of all dynamic text
-   (titles, 3D labels, open modals, the leaderboard) */
-function refreshDynamicText(){}
+/* Repaint every piece of text NOT covered by data-i18n: the captions of the
+   stateful buttons, the level heading, the 3D labels, the score, the
+   leaderboard, any open modal and the current coach line. The level is NOT
+   reloaded — the PDB structure and the molecule's pose stay where they are. */
+function refreshDynamicText(){
+  // button captions that depend on state
+  syncSolveBtn();
+  syncInfoBtn();
+  syncQualityBtn();
+  syncModeBar();
+  syncScore();
+  el('btnSound').title = t(soundOn ? 'btn.sound.on' : 'btn.sound.off');
+
+  // level heading, mission line, pocket label
+  if(LEVEL){
+    syncLevelText();
+    POCKET_LABEL = levelPocketLabel(LEVEL);
+  }
+
+  // leaderboard (number formatting and the "BEST" caption)
+  loadLeaderboard();
+
+  // open modals are re-rendered in place
+  if(el('levels').classList.contains('show')) renderLevels();
+  if(el('tut').classList.contains('show'))    renderTut();
+  coachRefreshBubble();
+
+  // the 3D labels are cached (see syncLabels in scene.js), so they have to be
+  // dropped and left for draw() to recreate them in the new language
+  if(viewer && !infoMode){
+    try{ viewer.removeAllLabels(); }catch(e){}
+    resetLabels();
+    resetDrawState();
+  }
+  // in study mode the target label is its own, recreated by study.js
+  if(viewer && infoMode){
+    removeStudyTarget();
+    addStudyTarget();
+  }
+}
 
 function setLang(code){
   if(code !== 'ru' && code !== 'en') return;
@@ -99,3 +136,22 @@ document.addEventListener('click', e=>{
 document.documentElement.lang = LANG;
 syncLangMenu();
 applyI18n();
+
+/* ---------- dictionary parity (used by ?selftest) ----------
+   Flat dictionaries drift apart easily when a string is added to one and
+   forgotten in the other. t() already warns in the console, but this check
+   catches the divergence before a player ever sees it. */
+function i18nKeyParity(){
+  return {
+    missingRu: Object.keys(I18N_EN).filter(k => !(k in I18N_RU)).sort(),
+    missingEn: Object.keys(I18N_RU).filter(k => !(k in I18N_EN)).sort(),
+  };
+}
+// every key referenced from the index.html markup
+function i18nMarkupKeys(){
+  const out = [];
+  document.querySelectorAll('[data-i18n],[data-i18n-html],[data-i18n-title]').forEach(n=>{
+    ['i18n','i18nHtml','i18nTitle'].forEach(a=>{ if(n.dataset[a]) out.push(n.dataset[a]); });
+  });
+  return out;
+}

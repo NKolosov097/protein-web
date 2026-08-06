@@ -67,6 +67,29 @@ function runSelfTest(){
   // substitution instead of a literal with a plain space (otherwise it flakes)
   stEq('numFmt: ru', numFmt(1234567).replace(/[\s\u00A0\u202F]/g, '_'), '1_234_567');
   LANG = savedLang;
+
+  // ---- i18n: the dictionaries have not drifted apart ----
+  const par = i18nKeyParity();
+  stEq('i18n: \u043A\u043B\u044E\u0447\u0438, \u043A\u043E\u0442\u043E\u0440\u044B\u0445 \u043D\u0435\u0442 \u0432 RU', par.missingRu, []);
+  stEq('i18n: \u043A\u043B\u044E\u0447\u0438, \u043A\u043E\u0442\u043E\u0440\u044B\u0445 \u043D\u0435\u0442 \u0432 EN', par.missingEn, []);
+
+  // ---- i18n: every key referenced from the markup exists ----
+  stEq('i18n: \u043A\u043B\u044E\u0447\u0438 \u0440\u0430\u0437\u043C\u0435\u0442\u043A\u0438 \u0431\u0435\u0437 \u043F\u0435\u0440\u0435\u0432\u043E\u0434\u0430',
+       i18nMarkupKeys().filter(k => !(k in I18N_EN) || !(k in I18N_RU)), []);
+
+  // ---- i18n: every level has a full set of texts ----
+  const parts = ['name','sub','drug','pocketLabel','blurb'];
+  const gaps = [];
+  LEVELS.forEach(L => parts.forEach(p => {
+    const k = 'levels.' + L.id + '.' + p;
+    if(!(k in I18N_EN) || !(k in I18N_RU)) gaps.push(k);
+  }));
+  stEq('i18n: \u0443\u0440\u043E\u0432\u043D\u0438 \u0431\u0435\u0437 \u0442\u0435\u043A\u0441\u0442\u043E\u0432', gaps, []);
+
+  // ---- i18n: the p53 hotspots are fully translated ----
+  const hotGaps = P53_HOTSPOT_RESI.filter(r =>
+    !('hotspot.p53.' + r in I18N_EN) || !('hotspot.p53.' + r in I18N_RU));
+  stEq('i18n: \u0433\u043E\u0440\u044F\u0447\u0438\u0435 \u0442\u043E\u0447\u043A\u0438 p53 \u0431\u0435\u0437 \u043F\u0435\u0440\u0435\u0432\u043E\u0434\u0430', hotGaps, []);
 }
 
 if(SELFTEST){
