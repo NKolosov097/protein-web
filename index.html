@@ -2,6 +2,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PROTEIN DOCKER</title>
 <link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="css/mobile.css">
 
 <div id="viewer"></div>
 
@@ -11,8 +12,11 @@
   <div id="hdrText">
     <h1>PROTEIN&nbsp;DOCKER</h1>
     <div class="sub" id="hdrSub">МИШЕНЬ: —</div>
+    <!-- счёт на мобиле переезжает сюда: панель #score там скрыта -->
+    <div class="sub mobileOnly" id="hdrScore"></div>
   </div>
   <button class="iconBtn" id="btnSound" title="Звук вкл/выкл">🔇</button>
+  <button class="iconBtn mobileOnly" id="btnMenu" title="Меню">☰</button>
 </div>
 
 <div id="score" class="panel">
@@ -26,17 +30,6 @@
   <ol id="lbList"></ol>
 </div>
 
-<div id="meter" class="panel">
-  <div id="mission">🎯 <b>Задача:</b> приведи молекулу-ключ в зелёный карман и заткни «выключатель» рака</div>
-  <div class="mrow"><span>КОНТАКТ С КАРМАНОМ</span><span id="status">—</span></div>
-  <div class="bar"><div id="barFill"></div></div>
-  <div id="hint">—</div>
-  <div class="mrow" style="margin-top:6px;color:#6f8bbf">
-    <span>до цели: <b id="distVal">—</b> Å</span>
-    <span>≤ 5 Å = в кармане</span>
-  </div>
-</div>
-
 <div id="help" class="panel">
   <div><b>ЛЕКАРСТВО</b> <span style="color:#6f8bbf">(мышь)</span></div>
   <div>🖱 тащи молекулу — двигать</div>
@@ -46,16 +39,47 @@
   <div style="margin-top:5px;color:#6f8bbf">Клавиши: <kbd>← ↑ → ↓</kbd> <kbd>W</kbd>/<kbd>S</kbd> двигать · <kbd>Q E A D Z C</kbd> вращать</div>
 </div>
 
-<div id="actions" class="panel">
-  <button class="b-dock" id="btnDock">▶ ТЕСТ ЛЕКАРСТВА</button>
-  <button class="b-ghost" id="btnSolve">💡 ПОДСКАЗКА</button>
-  <button class="b-ghost" id="btnLevels">🗂 УРОВНИ</button>
-  <button class="b-ghost" id="btnInfo">🔎 ИЗУЧЕНИЕ</button>
-  <button class="b-ghost" id="btnCoach">🎓 ОБУЧЕНИЕ</button>
-  <button class="b-ghost" id="btnReset">↺ СБРОС</button>
-  <button class="b-ghost" id="btnGuide">❓ ОБ ИГРЕ</button>
-  <button class="b-ghost" id="btnQuality">⚙ ГРАФИКА</button>
+<!-- Нижние панели живут в одной обёртке: на десктопе она display:contents
+     (полностью прозрачна, дети позиционируются fixed как раньше), на
+     мобиле становится flex-столбиком, и высоты складываются сами. -->
+<div id="bottomBar">
+
+  <div id="modeBar" class="mobileOnly">
+    <button data-mode="move" class="on">✋ ДВИГАТЬ</button>
+    <button data-mode="rotate">🔄 ВРАЩАТЬ</button>
+    <button data-mode="depth">↕ ГЛУБИНА</button>
+  </div>
+
+  <div id="meter" class="panel">
+    <div id="mission">🎯 <b>Задача:</b> приведи молекулу-ключ в зелёный карман и заткни «выключатель» рака</div>
+    <div class="mrow"><span>КОНТАКТ С КАРМАНОМ</span><span id="status">—</span></div>
+    <div class="bar"><div id="barFill"></div></div>
+    <div id="hint">—</div>
+    <div class="mrow" style="margin-top:6px;color:#6f8bbf">
+      <span>до цели: <b id="distVal">—</b> Å</span>
+      <span>≤ 5 Å = в кармане</span>
+    </div>
+  </div>
+
+  <div id="actions" class="panel">
+    <button class="b-dock" id="btnDock">▶ ТЕСТ ЛЕКАРСТВА</button>
+    <!-- на мобиле этот блок уезжает в выдвижной лист по кнопке ☰ -->
+    <div id="actionsRest">
+      <button class="b-ghost" id="btnSolve">💡 ПОДСКАЗКА</button>
+      <button class="b-ghost" id="btnLevels">🗂 УРОВНИ</button>
+      <button class="b-ghost" id="btnInfo">🔎 ИЗУЧЕНИЕ</button>
+      <button class="b-ghost" id="btnCoach">🎓 ОБУЧЕНИЕ</button>
+      <button class="b-ghost" id="btnReset">↺ СБРОС</button>
+      <button class="b-ghost" id="btnGuide">❓ ОБ ИГРЕ</button>
+      <button class="b-ghost" id="btnQuality">⚙ ГРАФИКА</button>
+      <button class="b-ghost mobileOnly" id="btnBoard">🏆 ЛИДЕРЫ</button>
+    </div>
+  </div>
+
 </div>
+
+<!-- затемнение под выдвижным листом и модалкой лидеров -->
+<div id="sheetBack"></div>
 
 <div id="tut">
   <div id="tutCard">

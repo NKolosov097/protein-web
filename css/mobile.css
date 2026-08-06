@@ -1,0 +1,109 @@
+/* ============================================================
+   МОБИЛЬНАЯ ВЁРСТКА
+   ------------------------------------------------------------
+   Единственный порог во всём проекте: узкий экран ИЛИ грубый
+   указатель (палец). Других медиазапросов по ширине не вводить.
+
+   Раскладка снизу вверх: переключатель режимов → метр → кнопка
+   «ТЕСТ ЛЕКАРСТВА». Все три лежат в #bottomBar, который здесь
+   становится flex-столбиком, поэтому отступы не захардкожены и
+   не разъезжаются, когда текст подсказки меняет высоту метра.
+   ============================================================ */
+@media (max-width: 820px), (pointer: coarse){
+
+  /* ---------- включаем мобильные элементы ---------- */
+  .mobileOnly{display:block}
+  #modeBar{display:flex}
+
+  /* ---------- хедер: компактный, в одну строку ---------- */
+  #hdr{top:6px;left:6px;right:6px;padding:8px 10px;gap:8px}
+  #hdrText{flex:1;min-width:0}
+  #hdr h1{font-size:12px;letter-spacing:1.5px}
+  #hdrSub{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #hdrScore{font-size:10px;color:var(--cyan);letter-spacing:1px;margin-top:2px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .iconBtn{width:44px;height:44px;font-size:19px}   /* минимум 44px под палец */
+
+  /* ---------- панели, которых на телефоне нет ---------- */
+  /* #score схлопнут в #hdrScore, #lb открывается кнопкой 🏆 из листа,
+     #help описывал управление мышью — на тач-устройстве он просто неверен */
+  #score, #lb, #help{display:none}
+
+  /* ---------- нижний стек ---------- */
+  #bottomBar{position:fixed;z-index:6;left:6px;right:6px;bottom:0;
+    display:flex;flex-direction:column;gap:6px;
+    padding-bottom:calc(6px + env(safe-area-inset-bottom))}
+  /* дети перестают позиционироваться сами — их раскладывает стек */
+  #meter, #actions{position:static;left:auto;right:auto;bottom:auto;
+    transform:none;width:auto;max-width:none}
+  #meter{padding:9px 12px}
+  #mission{font-size:11px;margin-bottom:7px;padding-bottom:7px}
+  #hint{font-size:10.5px}
+  .mrow{font-size:11px}
+  #actions{padding:0;border:none;background:none;box-shadow:none;backdrop-filter:none}
+  #btnDock{width:100%;padding:15px 16px;font-size:15px}
+
+  /* ---------- переключатель режимов ---------- */
+  #modeBar{gap:6px}
+  #modeBar button{flex:1;min-height:44px;padding:9px 4px;font-size:11px;letter-spacing:.5px;
+    background:var(--panel);color:#7f9cc9;border:1px solid var(--line);border-radius:12px;
+    backdrop-filter:blur(10px)}
+  #modeBar button.on{background:linear-gradient(90deg,rgba(34,224,255,.20),rgba(161,91,255,.20));
+    color:var(--cyan);border-color:var(--cyan);box-shadow:0 0 12px rgba(33,224,255,.25)}
+
+  /* ---------- выдвижной лист с остальными кнопками ---------- */
+  #actionsRest{position:fixed;z-index:71;left:0;right:0;bottom:0;
+    padding:14px 12px calc(18px + env(safe-area-inset-bottom));
+    gap:10px;border-radius:18px 18px 0 0;
+    background:linear-gradient(160deg,#0b1230,#0a0e22);border-top:1px solid #2a3a74;
+    box-shadow:0 -8px 40px rgba(0,0,0,.6);
+    transform:translateY(110%);transition:transform .25s ease;
+    max-height:80vh;overflow:auto}
+  #actionsRest.open{transform:none}
+  #actionsRest button{min-height:48px;font-size:14px}
+  #sheetBack.show{display:block;position:fixed;inset:0;z-index:70;
+    background:rgba(2,4,12,.6);backdrop-filter:blur(2px)}
+
+  /* ---------- лидеры как модалка ---------- */
+  #lb.asModal{display:block;position:fixed;z-index:72;left:12px;right:12px;top:50%;
+    transform:translateY(-50%);width:auto;padding:18px 20px}
+  #lb.asModal ol{font-size:15px;line-height:2.1}
+
+  /* ---------- модалки на весь экран ---------- */
+  #tutCard, #levelsCard, #coachDoneCard{width:calc(100vw - 12px);max-height:88vh;
+    overflow:auto;padding:20px 16px;border-radius:16px}
+  #levelGrid{grid-template-columns:1fr}
+  #tutBody{font-size:13.5px;min-height:0}
+  #tutSkip, #levelsClose{min-width:44px;min-height:44px;font-size:13px;
+    display:flex;align-items:center;justify-content:flex-end;top:8px;right:10px}
+  .cdPreviewWrap{height:150px}
+
+  /* ---------- обучение: пузырь на всю ширину ---------- */
+  #coach{left:6px;right:6px;width:auto;transform:translateY(14px);
+    bottom:calc(6px + env(safe-area-inset-bottom));padding:14px 16px 16px}
+  #coach.show{transform:none}
+  #coachText{font-size:13px;min-height:0}
+  /* во время обучения переключатель режимов появляется только когда он
+     нужен (шаг 3), иначе его перекрывает пузырь с текстом */
+  body.coaching #modeBar{display:none}
+  body.coaching.coach-modes #modeBar{display:flex}
+
+  /* ---------- подсказка режима изучения — плашкой снизу ---------- */
+  #tip.sheet{left:6px !important;right:6px !important;top:auto !important;
+    bottom:calc(6px + env(safe-area-inset-bottom)) !important;
+    max-width:none;font-size:13px}
+
+  /* ---------- тост ---------- */
+  #toast{width:calc(100vw - 24px);font-size:15px;padding:14px 16px;
+    white-space:normal;text-align:center;letter-spacing:1px}
+}
+
+/* ---------- ландшафт: по вертикали почти ничего нет ---------- */
+@media (max-height: 500px) and (pointer: coarse){
+  #mission{display:none}
+  #hdrScore{display:none}
+  #meter{padding:7px 12px}
+  #hint{display:none}
+  #btnDock{padding:11px 16px;font-size:13px}
+  #modeBar button{min-height:40px;padding:7px 4px}
+}
