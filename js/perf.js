@@ -58,9 +58,12 @@ function setQualityPref(pref){
   location.reload();
 }
 
-/* ---------- the "ГРАФИКА" button ----------
+/* ---------- the graphics-quality button ----------
    Cycles auto → low → high → auto. The caption shows the current
-   preference and, for auto, what it picked on this device. */
+   preference and, for auto, what it picked on this device.
+   The caption goes through t(), and i18n.js is loaded AFTER this file
+   (perf.js has to run early for the devicePixelRatio cap), so the
+   initial wiring lives at the end of js/mobile.js, not here. */
 function nextQualityPref(pref){
   if(pref === 'auto') return 'low';
   if(pref === 'low')  return 'high';
@@ -70,10 +73,8 @@ function nextQualityPref(pref){
 function syncQualityBtn(){
   const b = el('btnQuality');
   if(!b) return;
-  const name = QUALITY_PREF === 'auto' ? ('АВТО (' + (qLow() ? 'лёгкая' : 'красивая') + ')')
-             : QUALITY_PREF === 'low'  ? 'ЛЁГКАЯ'
-             : 'КРАСИВАЯ';
-  b.textContent = '⚙ ГРАФИКА: ' + name;
+  const name = QUALITY_PREF === 'auto'
+    ? t('quality.auto', {resolved: t(qLow() ? 'quality.lowWord' : 'quality.highWord')})
+    : t(QUALITY_PREF === 'low' ? 'quality.low' : 'quality.high');
+  b.textContent = t('btn.quality', {name});
 }
-if(el('btnQuality')) el('btnQuality').onclick = ()=> setQualityPref(nextQualityPref(QUALITY_PREF));
-syncQualityBtn();

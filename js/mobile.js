@@ -33,7 +33,7 @@ el('actionsRest').querySelectorAll('button').forEach(b=>{
 el('btnBoard').onclick = ()=>{
   loadLeaderboard();                       // pull a fresh table and record
   if(el('lb').style.display === 'none' || !getBoard().length){
-    showToast('Пока никто не отметился — сыграй и попади в таблицу!');
+    showToast(t('toast.boardEmpty'));
     closeSheet();
     return;
   }
@@ -52,3 +52,9 @@ el('modeBar').querySelectorAll('button').forEach(b=>{
   b.onclick = ()=>{ touchMode = b.dataset.mode; syncModeBar(); };
 });
 syncModeBar();
+
+/* ---------- graphics-quality button ----------
+   Wired here rather than in perf.js: its caption goes through t(), and
+   perf.js is loaded before i18n.js (it has to cap devicePixelRatio early). */
+el('btnQuality').onclick = ()=> setQualityPref(nextQualityPref(QUALITY_PREF));
+syncQualityBtn();

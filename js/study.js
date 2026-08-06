@@ -22,27 +22,22 @@ function buildChainStats(){
 function annotate(a, mode){
   const resn=(a.resn||'').toUpperCase(), resi=a.resi, chain=a.chain||'?';
   const elem=(a.elem||'').toUpperCase();
-  const NM = LEVEL ? LEVEL.name : 'белок';
-  if(elem==='ZN' || resn==='ZN')
-    return `🎯 ИОН ЦИНКА (Zn²⁺)\nСтруктурная опора ядра ${NM} — наша мишень для стыковки.`;
-  if(resn==='HOH' || resn==='WAT')
-    return '💧 Молекула воды\nЧасть кристаллической структуры, а не самого белка.';
-  if(a.het)
-    return `🔶 ${resn} · цепь ${chain}\nИон или малая молекула, связанная со структурой${LEVEL && !LEVEL.open && LEVEL.drug ? ' (в т.ч. само лекарство — цель стыковки)' : ''}.`;
+  const NM = LEVEL ? levelName(LEVEL) : t('study.proteinFallback');
+  if(elem==='ZN' || resn==='ZN') return t('study.zn', {name:NM});
+  if(resn==='HOH' || resn==='WAT') return t('study.water');
+  if(a.het) return t('study.het', {resn, chain,
+    extra: (LEVEL && !LEVEL.open && levelDrug(LEVEL)) ? t('study.hetDrug') : ''});
   const n = CHAIN_STATS[chain] ? CHAIN_STATS[chain].res.size : '?';
 
   if(DNA_RESN.includes(resn)){
-    if(mode==='chain')
-      return `🧬 ДНК · цепь ${chain}\nНить из ${n} нуклеотидов. Раковые белки вроде ${NM}\nконтактируют с ДНК и управляют работой генов.\n🔍 Приблизься, чтобы навести на отдельный нуклеотид.`;
-    return `🧬 Нуклеотид ${resn}${resi} · цепь ${chain}\nОтдельное звено нити ДНК рядом с белком ${NM}.`;
+    if(mode==='chain') return t('study.dnaChain', {chain, n, name:NM});
+    return t('study.dnaRes', {resn, resi, chain, name:NM});
   }
 
-  if(mode==='chain')
-    return `🔷 Цепь ${chain} — белок ${NM}\nЛента из ${n} аминокислот.\n🔍 Приблизься, чтобы навести на отдельную аминокислоту.`;
-  let s = `🔷 ${resn}${resi} · цепь ${chain}`;
+  if(mode==='chain') return t('study.chain', {chain, name:NM, n});
   const hs = LEVEL ? hotspotText(LEVEL.id, resi) : null;
-  s += hs ? '\n★ '+hs : `\nАминокислота белка ${NM}.`;
-  return s;
+  return t('study.resHead', {resn, resi, chain}) +
+         (hs ? '\n★ ' + hs : '\n' + t('study.resPlain', {name:NM}));
 }
 let curHi=null, prevHi=null, focused=false;
 const DIM = 0.7;   // opacity of everything except the hovered object (lower = darker)
@@ -143,7 +138,7 @@ let studyTargetLabel = null;
 function addStudyTarget(){
   if(!pocket) return;
   viewer.addSphere({center:pocket, radius:1.7, color:'#39ff14', opacity:0.25});   // halo, non-pickable
-  studyTargetLabel = viewer.addLabel('◎ ЦЕЛЬ стыковки — наведи, чтобы узнать', {
+  studyTargetLabel = viewer.addLabel(t(IS_TOUCH ? 'study.targetLabelTouch' : 'study.targetLabel'), {
     position:{x:pocket.x, y:pocket.y+12, z:pocket.z},
     backgroundColor:'#04220a', backgroundOpacity:0.8,
     fontColor:'#39ff14', fontSize:12, borderThickness:1.4, borderColor:'#39ff14',
@@ -155,7 +150,7 @@ function removeStudyTarget(){
   if(studyTargetLabel){ viewer.removeLabel(studyTargetLabel); studyTargetLabel=null; }
 }
 function syncInfoBtn(){
-  el('btnInfo').textContent = infoMode ? '🔎 ИЗУЧЕНИЕ: ВКЛ' : '🔎 ИЗУЧЕНИЕ';
+  el('btnInfo').textContent = infoMode ? t('btn.study.on') : t('btn.study');
   el('btnInfo').classList.toggle('b-dock', infoMode);
   el('btnInfo').classList.toggle('b-ghost', !infoMode);
 }
@@ -173,10 +168,10 @@ function setInfoMode(on){
     restoreNormal(); hideTip();
     resetDrawState();                  // scene was rebuilt — bring the gameplay shapes back
   }
-  showToast(on ? '🔎 Наведи курсор на цель, белок, цинк или ДНК' : 'Режим изучения выключен');
+  showToast(on ? t(IS_TOUCH ? 'toast.studyOnTouch' : 'toast.studyOn') : t('toast.studyOff'));
 }
 el('btnInfo').onclick = ()=>{
-  if(!LEVEL && !infoMode){ showToast('Сначала выбери мишень — 🗂 УРОВНИ'); return; }
+  if(!LEVEL && !infoMode){ showToast(t('toast.pickFirst')); return; }
   setInfoMode(!infoMode);
 };
 

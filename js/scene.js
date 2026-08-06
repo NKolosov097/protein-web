@@ -196,7 +196,7 @@ function syncLabels(){
   // the pocket entirely (intro steps), so drop the label with it and recreate it once shown.
   if(!coachHidePocket){
     if(!targetLabel){
-      targetLabel = viewer.addLabel("◎ ЦЕЛЬ: " + POCKET_LABEL, {
+      targetLabel = viewer.addLabel(t('label.target', {label: POCKET_LABEL}), {
         position:{x:pocket.x, y:pocket.y+12, z:pocket.z},
         backgroundColor:'#04220a', backgroundOpacity:0.75,
         fontColor:'#39ff14', fontSize:12, borderThickness:1.4, borderColor:'#39ff14',
@@ -210,7 +210,7 @@ function syncLabels(){
     const key = lig.x+','+lig.y+','+lig.z;
     if(key!==lastLigLabelPos){
       if(ligLabel) viewer.removeLabel(ligLabel);
-      ligLabel = viewer.addLabel("🔹 ТВОЁ ЛЕКАРСТВО", {
+      ligLabel = viewer.addLabel(t('label.drug'), {
         position:{x:lig.x, y:lig.y+4.5, z:lig.z},
         backgroundColor:'#0a1330', backgroundOpacity:0.72,
         fontColor:'#22e0ff', fontSize:12, borderThickness:1.4, borderColor:'#22e0ff',

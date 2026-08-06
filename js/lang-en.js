@@ -143,6 +143,55 @@ const I18N_EN = {
   'lv.pickToast':       'Open 🗂 TARGETS when you are ready to pick a target',
   'lv.loadError':       '⚠ Could not load {{pdb}} from the PDB. Check your connection.',
 
+  // ---- toasts / prompts ----
+  'toast.pickFirst':    'Pick a target first — 🗂 TARGETS',
+  'toast.hint':         '💡 The translucent blinking molecule is the ideal position. Copy its pose and its rotation with your own drug.',
+  'toast.vinaDown':     '⚠ Vina unavailable ({{err}}) — falling back to the learning model',
+  'toast.record':       '★ NEW BEST!  {{aff}} {{unit}} · {{src}}',
+  'toast.result':       '{{aff}} {{unit}} · {{pts}} points · {{src}}',
+  'toast.firstTest':    '{{aff}} {{unit}} is how strongly the key "sticks". The bigger the minus, the tighter it holds and the more points you score! ({{pts}})',
+  'toast.studyOn':      '🔎 Hover the target, the protein, the zinc or the DNA',
+  'toast.studyOnTouch': '🔎 Tap the target, the protein, the zinc or the DNA',
+  'toast.studyOff':     'Study mode off',
+  'toast.boardEmpty':   'Nobody on the board yet — play and get on it!',
+  'prompt.record':      'NEW BEST! Enter a nickname for the leaderboard:',
+  'prompt.defaultName': 'PLAYER',
+  'engine.learn':       'learning model',
+  'engine.learnFallback':'learning model (Vina unavailable)',
+  'engine.noServer':    'no connection to the server',
+
+  // ---- 3D labels ----
+  'label.target':       '◎ TARGET: {{label}}',
+  'label.drug':         '🔹 YOUR DRUG',
+
+  // ---- meter statuses and hints ----
+  'q.far':              'FAR',
+  'q.far.hint':         '🔑 steer the molecule toward the green pocket',
+  'q.closer':           'CLOSING IN…',
+  'q.closer.hint':      'closer still to the "switch"',
+  'q.close':            'CLOSE',
+  'q.close.hint':       'almost in the keyhole — bring it right up to the green marker',
+  'q.clash':            'CLASHING',
+  'q.clash.hint':       'the molecule is colliding with the protein — turn it so it sits flush',
+  'q.seated':           '★ SNUG FIT!',
+  'q.seated.hint':      '✅ great fit! press "TEST THE DRUG"',
+  'q.inPocket':         'IN THE POCKET',
+  'q.inPocket.hint':    'keep turning — look for the angle where the key sits tighter',
+
+  // ---- study mode tooltips ----
+  'study.proteinFallback':'the protein',
+  'study.zn':           '🎯 ZINC ION (Zn²⁺)\nThe structural anchor of the {{name}} core — our docking target.',
+  'study.water':        '💧 Water molecule\nPart of the crystal structure, not of the protein itself.',
+  'study.het':          '🔶 {{resn}} · chain {{chain}}\nAn ion or small molecule bound to the structure{{extra}}.',
+  'study.hetDrug':      ' (including the drug itself — the docking target)',
+  'study.dnaChain':     '🧬 DNA · chain {{chain}}\nA strand of {{n}} nucleotides. Cancer proteins like {{name}}\ncontact DNA and control how genes work.\n🔍 Zoom in to point at a single nucleotide.',
+  'study.dnaRes':       '🧬 Nucleotide {{resn}}{{resi}} · chain {{chain}}\nA single link of the DNA strand next to the {{name}} protein.',
+  'study.chain':        '🔷 Chain {{chain}} — the {{name}} protein\nA ribbon of {{n}} amino acids.\n🔍 Zoom in to point at a single amino acid.',
+  'study.resHead':      '🔷 {{resn}}{{resi}} · chain {{chain}}',
+  'study.resPlain':     'An amino acid of the {{name}} protein.',
+  'study.targetLabel':      '◎ DOCKING TARGET — hover to learn',
+  'study.targetLabelTouch': '◎ DOCKING TARGET — tap to learn',
+
   // ---- coach ----
   'coach.skip':         'SKIP THE TUTORIAL ✕',
   'coach.next':         'Next ▶',

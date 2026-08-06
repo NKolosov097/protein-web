@@ -142,17 +142,14 @@ function quality(fit){
   // ---- phase 1: still bringing the key toward the pocket ----
   // device-neutral wording: the same hint is true for a mouse and for a finger
   // (on a phone "right click" and "mouse" simply do not exist)
-  if(centerDist>20) return {color:'#ff2e5b', status:'ДАЛЕКО',       pct:6,  hint:'🔑 веди молекулу к зелёному карману'};
-  if(centerDist>10) return {color:'#ff8a1e', status:'ПОДБИРАЕМСЯ…', pct:26, hint:'ещё ближе к «выключателю»'};
-  if(centerDist>5)  return {color:'#ffb000', status:'БЛИЗКО',       pct:44, hint:'почти в скважине — доведи вплотную к зелёной метке'};
+  if(centerDist>20) return {color:'#ff2e5b', status:t('q.far'),    pct:6,  hint:t('q.far.hint')};
+  if(centerDist>10) return {color:'#ff8a1e', status:t('q.closer'), pct:26, hint:t('q.closer.hint')};
+  if(centerDist>5)  return {color:'#ffb000', status:t('q.close'),  pct:44, hint:t('q.close.hint')};
   // ---- phase 2: in the pocket → orientation / seating now drives the score ----
   // seating quality from the binding energy: -3 (loose) … -12 (tight)
   const q = Math.max(0, Math.min(1, (-affinity-3)/9));
   const pct = Math.round(55 + q*45);
-  if(clash>1.2) return {color:'#ffb000', status:'УПИРАЕТСЯ', pct:Math.min(pct,62),
-    hint:'молекула сталкивается с белком — поверни её, чтобы легла плотнее'};
-  if(q>0.75)    return {color:'#39ff14', status:'★ ПЛОТНО СЕЛ!', pct:100,
-    hint:'✅ отличная посадка! жми «ТЕСТ ЛЕКАРСТВА»'};
-  return          {color:'#ffe600', status:'В КАРМАНЕ', pct,
-    hint:'поворачивай — ищи угол, где ключ ляжет плотнее'};
+  if(clash>1.2) return {color:'#ffb000', status:t('q.clash'),  pct:Math.min(pct,62), hint:t('q.clash.hint')};
+  if(q>0.75)    return {color:'#39ff14', status:t('q.seated'), pct:100,              hint:t('q.seated.hint')};
+  return          {color:'#ffe600', status:t('q.inPocket'), pct,                     hint:t('q.inPocket.hint')};
 }
