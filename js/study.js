@@ -2,8 +2,9 @@
    STUDY MODE ("ИЗУЧЕНИЕ") — hover any part of the structure to learn
    what it is. Manages its own highlighting, detail level (ribbon vs
    individual residue by zoom), target marker and HTML tooltip.
-   HOTSPOTS (frequent cancer mutations) are per-level — set from
-   LEVEL.hotspots on load (see onModelLoaded).
+   HOTSPOTS (frequent cancer mutations) are per-level — the residue
+   list is set on load (see onModelLoaded) and the texts come from
+   the dictionaries via hotspotText() (see js/i18n.js).
    ============================================================ */
 
 // summarise each polymer chain once (how many residues / nucleotides it has)
@@ -39,7 +40,8 @@ function annotate(a, mode){
   if(mode==='chain')
     return `🔷 Цепь ${chain} — белок ${NM}\nЛента из ${n} аминокислот.\n🔍 Приблизься, чтобы навести на отдельную аминокислоту.`;
   let s = `🔷 ${resn}${resi} · цепь ${chain}`;
-  s += HOTSPOTS[resi] ? '\n★ '+HOTSPOTS[resi] : `\nАминокислота белка ${NM}.`;
+  const hs = LEVEL ? hotspotText(LEVEL.id, resi) : null;
+  s += hs ? '\n★ '+hs : `\nАминокислота белка ${NM}.`;
   return s;
 }
 let curHi=null, prevHi=null, focused=false;

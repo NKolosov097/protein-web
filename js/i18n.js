@@ -40,6 +40,21 @@ function t(key, vars){
 }
 function numFmt(n){ return Number(n).toLocaleString(LANG === 'ru' ? 'ru-RU' : 'en-US'); }
 
+/* ---------- level text ----------
+   levels-data.js keeps the structure only; everything readable is here. */
+function levelName(L){        return L ? t('levels.' + L.id + '.name')        : ''; }
+function levelSub(L){         return L ? t('levels.' + L.id + '.sub')         : ''; }
+function levelBlurb(L){       return L ? t('levels.' + L.id + '.blurb')       : ''; }
+function levelPocketLabel(L){ return L ? t('levels.' + L.id + '.pocketLabel') : t('pocket.default'); }
+// an empty string means no real drug exists for this target
+function levelDrug(L){        return L ? t('levels.' + L.id + '.drug')        : ''; }
+// hint about a frequent cancer mutation in residue resi, or null
+function hotspotText(levelId, resi){
+  const d = I18N[LANG] || I18N.en;
+  const k = 'hotspot.' + levelId + '.' + resi;
+  return d[k] != null ? d[k] : null;
+}
+
 /* expand the static text. root is an optional container (needed when a
    modal has just re-rendered its own contents) */
 function applyI18n(root){

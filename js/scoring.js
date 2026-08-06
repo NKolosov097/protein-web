@@ -14,7 +14,7 @@ const COMMON_HET = new Set(('HOH WAT GDP GTP GNP GSP GCP GPP GDP MG MN NA CL K C
 function findPocket(atoms){
   const U = s => (s||'').toUpperCase();
   const strat = (LEVEL && LEVEL.pocket) || {type:'auto'};
-  const label = strat.label || 'КАРМАН';
+  const label = levelPocketLabel(LEVEL);   // the text lives in the dictionaries, see js/i18n.js
 
   if(strat.type==='elem'){
     const a = atoms.find(x => U(x.elem)===strat.value || U(x.resn)===strat.value);

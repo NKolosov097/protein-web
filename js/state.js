@@ -42,7 +42,8 @@ let score = 0, best = 0, breath = 0;
 
 // current level + docking target (set on load)
 let LEVEL = null, LEVEL_IDX = 0, gen = 0, POCKET_LABEL = 'КАРМАН';
-let HOTSPOTS = {};   // per-level cancer-mutation hotspots (set on load)
+// residue numbers that have a cancer-mutation hint (the texts live in the dictionaries)
+let HOTSPOTS = [];
 // "ding" on entering the pocket — fires once per boundary crossing (see zoneSound)
 let wasInPocket = false;
 // true while the CAMERA is being moved (orbit / pan). The animation loop freezes the

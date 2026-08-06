@@ -41,15 +41,11 @@ function loadLevel(i){
   solutionPose = null; showSolution = false; syncSolveBtn();   // drop any hint from the previous level
 
   // HUD / title reflect the current target
-  document.title = 'PROTEIN DOCKER — ' + LEVEL.name + ' (' + LEVEL.pdb + ')';
-  el('hdrSub').textContent = 'МИШЕНЬ: ' + LEVEL.name + ' · PDB ' + LEVEL.pdb + ' · ' + LEVEL.sub;
-  el('mission').innerHTML = LEVEL.open
-    ? '🔬 <b>Открытая задача:</b> лекарства ещё нет ни у кого — ищи, куда «прицепить» ключ на белке <b>' + LEVEL.name + '</b>'
-    : '🎯 <b>Задача:</b> приведи молекулу-ключ в зелёный карман и заткни «выключатель» рака';
+  syncLevelText();
   setScore(0);
 
   // loading screen + a safety timeout so a bad/absent PDB id is recoverable
-  el('loadTxt').textContent = 'ЗАГРУЗКА СТРУКТУРЫ ' + LEVEL.name + ' · ' + LEVEL.pdb + '…';
+  el('loadTxt').textContent = t('load.level', {name: levelName(LEVEL), pdb: LEVEL.pdb});
   el('load').style.display = 'flex';
   clearTimeout(loadTimer);
   loadTimer = setTimeout(()=>{ if(myGen===gen && !proteinAtoms.length) levelLoadError(); }, 18000);
@@ -64,10 +60,21 @@ function loadLevel(i){
   });
 }
 
+// headings that depend on BOTH the current level and the current language
+function syncLevelText(){
+  if(!LEVEL) return;
+  document.title = 'PROTEIN DOCKER — ' + levelName(LEVEL) + ' (' + LEVEL.pdb + ')';
+  el('hdrSub').textContent = t('hdr.target',
+    {name: levelName(LEVEL), pdb: LEVEL.pdb, sub: levelSub(LEVEL)});
+  el('mission').innerHTML = LEVEL.open
+    ? t('mission.open', {name: levelName(LEVEL)})
+    : t('mission.closed');
+}
+
 function levelLoadError(){
   clearTimeout(loadTimer);
   el('load').style.display='none';
-  showToast('⚠ Не удалось загрузить ' + (LEVEL ? LEVEL.pdb : '') + ' из PDB. Проверь интернет.', 3200);
+  showToast(t('lv.loadError', {pdb: LEVEL ? LEVEL.pdb : '—'}), 3200);
   openLevels();
 }
 
@@ -90,7 +97,9 @@ function onModelLoaded(atoms, myGen){
   });
   hoverAtoms = proteinAtoms;
   buildChainStats();
-  HOTSPOTS = LEVEL.hotspots || {};
+  // the hint texts live in the dictionaries; here we only keep the list of
+  // residues that have one (see hotspotText in js/i18n.js)
+  HOTSPOTS = (LEVEL.hotspots && LEVEL.id === 'p53') ? P53_HOTSPOT_RESI : [];
 
   // target pocket per level (ion / named ligand / auto-detected drug / centroid)
   const pk = findPocket(proteinAtoms);
