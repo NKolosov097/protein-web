@@ -196,4 +196,41 @@ const I18N_EN = {
   'coach.skip':         'SKIP THE TUTORIAL ✕',
   'coach.next':         'Next ▶',
   'done.title':         'TARGET CLEARED!',
+
+  // ---- coach (in-scene tutorial, level 1) ----
+  'coach.thisProtein':  'this protein',
+  'coach.0':            'This is the cancer protein <b>{{name}}</b>. Inside a tumour cell it is "broken" and keeps the cell from ever stopping its division. Let\'s work out how to switch it off. <span class="hlc">Press "Next"</span>.',
+  'coach.1':            'Here is <b>your drug</b> — a tiny key molecule (the blinking blue one). This is what you act with: you steer it in and slot it into the protein.',
+  'coach.2':            'And this is the <b>pocket</b> — the protein\'s weak spot, its "switch" (the green marker). We turned the cell to face it. Your goal is to slot the key in exactly here.',
+  'coach.3.mouse':      'Grab the drug with the mouse and <b>lead it along the glowing track</b> straight into the pocket. Don\'t worry about missing — for now the key holds the track by itself.',
+  'coach.3.touch':      'Drag your <b>finger along the glowing track</b> — the drug follows it straight into the pocket. Don\'t worry about missing — for now the key holds the track by itself.',
+  'coach.4.mouse':      'You are at the pocket! Now <b>rotate</b> the drug (<span class="hlc">right-click + mouse</span>) and bring it right up, so it lies like the <b>blinking reference</b>. Once it sits snugly, the "Test" button appears.',
+  'coach.4.touch':      'You are at the pocket! Switch to <span class="hlc">🔄 ROTATE</span> below and <b>turn</b> the drug with your finger so it lies like the <b>blinking reference</b>. Once it sits snugly, the "Test" button appears.',
+  'coach.5':            'The key is seated! Press the pulsing <b>"▶ TEST THE DRUG"</b> button — let\'s see how tightly it holds.',
+  'coach.cursor.mouse': 'grab it and lead it to the pocket',
+  'coach.cursor.touch': 'drag it to the pocket',
+
+  // ---- level-cleared modal ----
+  'done.body.next':     'You fitted a drug to <b>{{name}}</b> — binding energy {{aff}} {{unit}}.<br><br>Next up: <b>{{next}}</b>. From here you play <b>on your own</b>: no hints and no magnet — we only show the blinking drug in the pocket, as the goal to reach.',
+  'done.body.last':     'You fitted a drug to <b>{{name}}</b> — binding energy {{aff}} {{unit}}.<br><br>That was the last target. Pick the next one from the target menu.',
+  'done.go.next':       'Level {{n}} ▶',
+  'done.go.levels':     '🗂 To the targets',
+
+  // ---- "what it is" deck ----
+  'about.1.title':      'What cancer is, in plain words',
+  'about.1.body':       'Picture a <span class="hl">broken mechanism</span> inside a cell: it is jammed in the "on" position and forces the cell to divide without stopping. That is cancer.<br><br>The mechanism has a weak spot — a <span class="hlc">"pocket"</span>, its "switch". The game holds <b>several real cancer proteins</b> (levels) — from p53 to "impregnable" targets that still have no drug at all.',
+  'about.2.title':      'You are holding the key',
+  'about.2.body':       'Your little molecule is the <span class="hlc">key</span> (or the plug).<br><br>The task is like the children\'s toy where a shape has to go into the hole that matches it: <span class="hl">slot the key exactly into the pocket</span> and jam the "switch", so the cancer mechanism stops working.<br><br>The key has to be not only steered in but also <b>turned the right way round</b>. The more precisely it enters the pocket, the greener the meter — meaning it holds tighter.',
+  'about.3.title':      'Why this matters for real',
+  'about.3.body':       'This is not just a game. If you find the <span class="hl">shape and position of the key</span> where it sticks hardest, that data is genuinely useful to scientists.<br><br>Such a molecule can be synthesised in a lab and turned into a <span class="hlc">real cancer drug</span>. You are literally looking for something to plug a cancer protein with.',
+
+  // ---- "how to play" deck ----
+  'how.1.title':        'Your key and your target',
+  'how.1.body':         'The blue molecule labelled <span class="hlc">"YOUR DRUG"</span> is a <b>candidate drug molecule</b> (a tiny substance used to treat disease). In the game it is your key, and you control it.<br><br>The <span class="hl">pulsing green marker with the "◎ TARGET" arrow</span> is the protein\'s pocket (its "switch"). Lead the key straight into it.<br><br>The pocket is <b>not random</b>: on every level it is the real weak spot of one specific cancer protein (p53\'s zinc site, say, or the pocket a real drug sits down in). Levels are chosen with the <span class="hlc">🗂 TARGETS</span> button.',
+  'how.2.title.mouse':  'Steering the key — just the mouse',
+  'how.2.title.touch':  'Steering the key — with your finger',
+  'how.2.body.mouse':   '<b>Move:</b> <span class="hlc">grab the molecule with the mouse and drag</span> it across the screen. The wheel over it — <b>deeper/closer</b>.<br><b>Rotate:</b> <span class="hlc">right-click + drag</span> — and the molecule turns.<br><br>First <span class="hl">bring</span> the key up to the green marker, then <span class="hl">rotate</span> it until it sits flush (meter: red → yellow → <span class="hl">GREEN = SNUG FIT</span>, with a "ding").<br><br><span style="color:#9db8e0">Orbit the camera by dragging the <b>background</b>; pan with <kbd>Shift</kbd>+mouse. Keys work too: <kbd>W</kbd>/<kbd>S</kbd>, <kbd>Q E A D Z C</kbd>.</span>',
+  'how.2.body.touch':   'There are three modes at the bottom: <span class="hlc">✋ MOVE</span>, <span class="hlc">🔄 ROTATE</span>, <span class="hlc">↕ DEPTH</span>. Drag your <b>finger across the molecule</b> and it does whatever is selected.<br><br>First <span class="hl">bring</span> the key up to the green marker in "MOVE", then switch to "ROTATE" and <span class="hl">turn</span> it until it sits flush (meter: red → yellow → <span class="hl">GREEN = SNUG FIT</span>, with a "ding").<br><br><span style="color:#9db8e0">A finger on the <b>background</b> spins the cell itself; two fingers zoom.</span>',
+  'how.3.title':        'Test the key and win',
+  'how.3.body':         'When the meter is <span class="hl">green</span>, press <span class="hlc">"▶ TEST THE DRUG"</span>. You get a <b>binding energy</b> (kcal/mol) — how tightly the key stuck.<br><br><span class="hl">The bigger the minus</span> (−9.5, say), the stronger the hold, the more points, the fireworks 🎆 and a place on the leaderboard!<br><br>The <span class="hlc">🔎 STUDY</span> button lets you point at things and find out what does what inside the protein.',
 };

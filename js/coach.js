@@ -114,32 +114,26 @@ function coachGoto(n){
   // the mode switcher is needed from step 3 on (before that the bubble covers it)
   document.body.classList.toggle('coach-modes', n>=3);
   const P = pocket;
-  const NM = LEVEL ? LEVEL.name : 'этот белок';
+  const NM = LEVEL ? levelName(LEVEL) : t('coach.thisProtein');
   switch(n){
     case 0:   // ---- overview: just the protein (pulled back so it fits), no pocket, no drug ----
       coachHidePocket = true; coachHideDrug = true; coachBlinkDrug = false; coachMagnet = false;
       coachTrack = null; showSolution = false; syncSolveBtn();
       // whole cell, pulled back a bit and lifted so it doesn't sit behind the bottom bubble
       tweenView(captureTarget(()=>{ viewer.zoomTo({}); viewer.zoom(0.72); viewer.translate(0, 30); }), 800);
-      coachBubble('🧬',
-        `Перед тобой раковый белок <b>${NM}</b>. В опухолевой клетке он «сломан» и не даёт ей ` +
-        `остановить деление. Сейчас разберёмся, как его «выключить». <span class="hlc">Нажми «Далее»</span>.`, true);
+      coachBubble('🧬', t('coach.0', {name:NM}), true);
       break;
     case 1:   // ---- the drug (centre it up close) ----
       coachHidePocket = true; coachHideDrug = false; coachBlinkDrug = true; coachMagnet = false;
       coachTrack = null;
       flightTo(drugCenter, 1.7, 800, {face:true});
-      coachBubble('🔑',
-        `Вот <b>твоё лекарство</b> — крошечная молекула-ключ (голубая, мигает). Именно им ты ` +
-        `будешь действовать: подводить и вставлять в белок.`, true);
+      coachBubble('🔑', t('coach.1'), true);
       break;
     case 2:   // ---- the pocket: it's on the far side, so TURN the protein to face it ----
       coachHidePocket = false; coachHideDrug = false; coachBlinkDrug = false; coachMagnet = false;
       coachTrack = null;
       flightTo(()=>pocket, 1.9, 800, {face:true});
-      coachBubble('🎯',
-        `А это <b>карман</b> — уязвимое место белка, его «выключатель» (зелёная метка). ` +
-        `Мы повернули клетку к нему. Цель — вставить ключ точно сюда.`, true);
+      coachBubble('🎯', t('coach.2'), true);
       break;
     case 3: {  // ---- guide along the magnetic track: show both ends, tilted so the pocket is clear ----
       coachHidePocket = false; coachHideDrug = false; coachBlinkDrug = true; coachMagnet = true;
@@ -154,11 +148,7 @@ function coachGoto(n){
         viewer.zoom(1.05);
         recenter(mid);
       }), 900);
-      coachBubble(IS_TOUCH ? '👆' : '🖱', IS_TOUCH
-        ? `Проведи <b>пальцем по светящейся дорожке</b> — лекарство пойдёт за ним прямо в карман. ` +
-          `Не бойся промахнуться — сейчас ключ сам держится трека.`
-        : `Схвати лекарство мышью и <b>веди по светящейся дорожке</b> прямо в карман. ` +
-          `Не бойся промахнуться — сейчас ключ сам держится трека.`, false);
+      coachBubble(IS_TOUCH ? '👆' : '🖱', t(IS_TOUCH ? 'coach.3.touch' : 'coach.3.mouse'), false);
       break;
     }
     case 4:   // ---- rotate to seat (reference ghost blinks) ----
@@ -169,18 +159,12 @@ function coachGoto(n){
       // zoom into the pocket, keeping step 3's turned/tilted orientation; the tween goes straight
       // there so there's no jarring pull-back to the whole protein.
       tweenView(captureTarget(()=>{ viewer.zoomTo({}); viewer.zoom(1.7); recenter(pocket); }), 700);
-      coachBubble('🔄', IS_TOUCH
-        ? `Ты у кармана! Переключись внизу на <span class="hlc">🔄 ВРАЩАТЬ</span> и <b>поверни</b> лекарство ` +
-          `пальцем, чтобы оно легло как <b>моргающий эталон</b>. Когда сядет плотно — появится кнопка «Тест».`
-        : `Ты у кармана! Теперь <b>поверни</b> лекарство (<span class="hlc">правый клик + мышь</span>) ` +
-          `и подведи вплотную, чтобы оно легло как <b>моргающий эталон</b>. Когда сядет плотно — появится кнопка «Тест».`, false);
+      coachBubble('🔄', t(IS_TOUCH ? 'coach.4.touch' : 'coach.4.mouse'), false);
       break;
     case 5:   // ---- press TEST ----
       coachBlinkDrug = false; coachMagnet = false; coachTrack = null;
       el('btnDock').classList.add('pulse');
-      coachBubble('✅',
-        `Отлично, ключ сел плотно! Жми пульсирующую кнопку <b>«▶ ТЕСТ ЛЕКАРСТВА»</b> справа — ` +
-        `проверим, насколько крепко он держится.`, false);
+      coachBubble('✅', t('coach.5'), false);
       // pre-render the next target's 3D preview so the success modal can show it instantly
       { const nxt = LEVELS[LEVEL_IDX+1]; if(nxt) renderLevelPreview(nxt.pdb); }
       break;
@@ -210,7 +194,7 @@ function coachShapes(world, center){
     const r = el('viewer').getBoundingClientRect();
     cur.style.left = (r.left + s.x) + 'px';
     cur.style.top  = (r.top  + s.y) + 'px';
-    cur.querySelector('.cc-tip').textContent = IS_TOUCH ? 'веди пальцем в карман' : 'схвати и веди в карман';
+    cur.querySelector('.cc-tip').textContent = t(IS_TOUCH ? 'coach.cursor.touch' : 'coach.cursor.mouse');
     cur.style.display = 'block';
   } else {
     cur.style.display = 'none';
@@ -258,18 +242,15 @@ function coachSuccess(affinity){
   coachNextIdx = nxt ? LEVEL_IDX+1 : -1;
   endCoach();   // stop coaching; the modal takes over
 
-  el('coachDoneTitle').textContent = 'МИШЕНЬ ПРОЙДЕНА!';
+  el('coachDoneTitle').textContent = t('done.title');
+  const common = {name: levelName(done), aff: affinity.toFixed(1), unit: t('unit.kcal')};
   if(nxt){
-    el('coachDoneBody').innerHTML =
-      `Ты подобрал лекарство к <b>${done.name}</b> — энергия связывания ${affinity.toFixed(1)} ккал/моль.<br><br>` +
-      `Дальше — уровень <b>${nxt.name}</b>. Теперь ты играешь <b>сам</b>: без подсказок и ` +
-      `«примагничивания» — покажем только моргающее лекарство в кармане (цель, куда нужно дойти).`;
-    el('coachDoneGo').textContent = 'Уровень ' + (LEVEL_IDX+2) + ' ▶';
+    el('coachDoneBody').innerHTML = t('done.body.next',
+      Object.assign({next: levelName(nxt)}, common));
+    el('coachDoneGo').textContent = t('done.go.next', {n: LEVEL_IDX+2});
   } else {
-    el('coachDoneBody').innerHTML =
-      `Ты подобрал лекарство к <b>${done.name}</b> — энергия связывания ${affinity.toFixed(1)} ккал/моль.<br><br>` +
-      `Это была последняя мишень. Выбери следующую в меню уровней.`;
-    el('coachDoneGo').textContent = '🗂 К уровням';
+    el('coachDoneBody').innerHTML = t('done.body.last', common);
+    el('coachDoneGo').textContent = t('done.go.levels');
   }
 
   // preview slot: spinner while the next target renders (kicked off in step 5), image when ready
@@ -336,7 +317,7 @@ function renderLevelPreview(pdb){
 el('coachNext').onclick = ()=>{ if(coachStep<3) coachGoto(coachStep+1); };
 el('coachSkip').onclick = endCoach;
 el('btnCoach').onclick   = ()=>{
-  if(!pocket){ showToast('Сначала выбери мишень — 🗂 УРОВНИ'); return; }
+  if(!pocket){ showToast(t('toast.pickFirst')); return; }
   if(infoMode) setInfoMode(false);
   startCoach();
 };
