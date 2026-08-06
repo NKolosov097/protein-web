@@ -46,7 +46,7 @@ function loadLevel(i){
   el('mission').innerHTML = LEVEL.open
     ? '🔬 <b>Открытая задача:</b> лекарства ещё нет ни у кого — ищи, куда «прицепить» ключ на белке <b>' + LEVEL.name + '</b>'
     : '🎯 <b>Задача:</b> приведи молекулу-ключ в зелёный карман и заткни «выключатель» рака';
-  score = 0; el('scoreVal').textContent = '0';
+  setScore(0);
 
   // loading screen + a safety timeout so a bad/absent PDB id is recoverable
   el('loadTxt').textContent = 'ЗАГРУЗКА СТРУКТУРЫ ' + LEVEL.name + ' · ' + LEVEL.pdb + '…';

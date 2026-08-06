@@ -225,7 +225,7 @@ function startCoach(){
   // reset the drug to its starting spot, clear any hint / score
   lig.x = pocket.x+26; lig.y = pocket.y+14; lig.z = pocket.z+22; lig.rx=lig.ry=lig.rz=0;
   solutionPose = null; showSolution = false; syncSolveBtn();
-  score = 0; el('scoreVal').textContent = '0';
+  setScore(0);
   el('btnDock').classList.remove('pulse');
   document.body.classList.add('coaching');   // hide meter / controls hint / action menu (see css)
   camInteracting = false;                     // clear any stale flag so the first flight runs

@@ -51,6 +51,9 @@ let camInteracting = false;
 // the molecule is being dragged with a finger in "depth" mode (see touchMode in controls.js).
 // Lives here because it is read both in scene.js (pocketAnimates) and in controls.js.
 let depthLig = false;
+// what a single finger dragged ACROSS THE MOLECULE does (the #modeBar switcher).
+// Written in mobile.js, read in controls.js.
+let touchMode = 'move';   // 'move' | 'rotate' | 'depth'
 
 // ---- guided tutorial ("coach") state (see js/coach.js) ----
 // A step-driven, in-scene onboarding that flies the camera, blinks objects, draws a magnetic

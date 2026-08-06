@@ -63,8 +63,7 @@ el('btnDock').onclick = async ()=>{
   const pts = Math.round(-affinity*1000);
   btn.disabled=false; btn.textContent=old;
 
-  score = pts;
-  el('scoreVal').textContent = score.toLocaleString('ru-RU');
+  setScore(pts);
 
   // record per-level progress (attempt / best affinity / solved + unlock next)
   recordResult(affinity, mind);
@@ -73,7 +72,7 @@ el('btnDock').onclick = async ()=>{
   // win — celebrate, then show the "level cleared" modal with a preview of the next target.
   if(coachActive && coachStep===5 && mind<=5){
     fireworks(); chimeWin();
-    if(pts>best){ best=pts; el('best').textContent='РЕКОРД: '+best.toLocaleString('ru-RU'); saveScore(pts); }
+    if(pts>best){ setBest(pts); saveScore(pts); }
     coachSuccess(affinity);
     return;
   }
@@ -83,7 +82,7 @@ el('btnDock').onclick = async ()=>{
 
   let msg;
   if(pts>best){
-    best=pts; el('best').textContent='РЕКОРД: '+best.toLocaleString('ru-RU');
+    setBest(pts);
     fireworks(); chimeWin();
     msg = `★ РЕКОРД!  ${affinity.toFixed(1)} ккал/моль · ${source}`;
     saveScore(pts);
@@ -102,8 +101,21 @@ el('btnDock').onclick = async ()=>{
 el('btnReset').onclick = ()=>{
   if(!pocket){ showToast('Сначала выбери мишень — 🗂 УРОВНИ'); return; }
   lig.x=pocket.x+26; lig.y=pocket.y+14; lig.z=pocket.z+22;
-  lig.rx=lig.ry=lig.rz=0; score=0; el('scoreVal').textContent='0';
+  lig.rx=lig.ry=lig.rz=0; setScore(0);
 };
+
+/* ---------- score: a single write point ----------
+   On mobile the #score panel is hidden and the score + record are shown as the
+   #hdrScore line in the header, so writing to the DOM directly is no longer OK. */
+function syncScore(){
+  el('scoreVal').textContent = score.toLocaleString('ru-RU');
+  el('best').textContent = 'РЕКОРД: ' + best.toLocaleString('ru-RU');
+  const h = el('hdrScore');
+  if(h) h.textContent = 'СЧЁТ ' + score.toLocaleString('ru-RU') + ' · РЕКОРД ' + best.toLocaleString('ru-RU');
+}
+function setScore(n){ score = n; syncScore(); }
+function setBest(n){ best = n; syncScore(); }
+syncScore();   // fill the header line on load: on mobile it is the only score readout
 
 /* ---------- toast + fireworks ---------- */
 function showToast(msg, ms=1800){
@@ -176,6 +188,5 @@ function loadLeaderboard(){
   if(!b.length){ el('lb').style.display='none'; return; }
   el('lb').style.display='block';
   el('lbList').innerHTML = b.map(r=>`<li>${r.name}<span>${r.pts.toLocaleString('ru-RU')}</span></li>`).join('');
-  best = Math.max(best, b[0].pts);
-  el('best').textContent='РЕКОРД: '+best.toLocaleString('ru-RU');
+  setBest(Math.max(best, b[0].pts));
 }
