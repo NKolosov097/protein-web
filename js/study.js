@@ -166,6 +166,7 @@ function setInfoMode(on){
   } else {
     removeStudyTarget();
     restoreNormal(); hideTip();
+    resetDrawState();                  // сцена пересобрана — вернуть шейпы геймплея
   }
   showToast(on ? '🔎 Наведи курсор на цель, белок, цинк или ДНК' : 'Режим изучения выключен');
 }

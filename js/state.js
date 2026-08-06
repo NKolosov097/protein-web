@@ -48,6 +48,9 @@ let wasInPocket = false;
 // true while the CAMERA is being moved (orbit / pan). The animation loop freezes the
 // gameplay redraw during this time so it doesn't fight 3Dmol's own render — see animate().
 let camInteracting = false;
+// молекулу тянут пальцем в режиме «глубина» (см. touchMode в controls.js).
+// Живёт здесь, потому что читается и в scene.js (pocketAnimates), и в controls.js.
+let depthLig = false;
 
 // ---- guided tutorial ("coach") state (see js/coach.js) ----
 // A step-driven, in-scene onboarding that flies the camera, blinks objects, draws a magnetic
