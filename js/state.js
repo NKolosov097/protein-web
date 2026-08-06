@@ -41,7 +41,9 @@ const LIG_LOCAL = [
 let score = 0, best = 0, breath = 0;
 
 // current level + docking target (set on load)
-let LEVEL = null, LEVEL_IDX = 0, gen = 0, POCKET_LABEL = 'КАРМАН';
+// POCKET_LABEL starts empty on purpose: the translated default comes from the
+// dictionaries via levelPocketLabel(), and i18n.js is not loaded yet at this point.
+let LEVEL = null, LEVEL_IDX = 0, gen = 0, POCKET_LABEL = '';
 // residue numbers that have a cancer-mutation hint (the texts live in the dictionaries)
 let HOTSPOTS = [];
 // "ding" on entering the pocket — fires once per boundary crossing (see zoneSound)
