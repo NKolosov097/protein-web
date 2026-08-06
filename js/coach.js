@@ -181,11 +181,11 @@ function coachGoto(n){
   }
 }
 
-/* ---------- per-frame hook (вызывается из draw в scene.js) ----------
-   Только рисование: светящаяся дорожка + позиция курсора «схвати здесь».
-   Проверка автопереходов (coachTick) вызывается из draw() ОТДЕЛЬНО и
-   раньше, потому что она должна идти каждый тик, даже когда кадр не
-   перерисовывается (dirty-render, см. scene.js). */
+/* ---------- per-frame hook (called from draw in scene.js) ----------
+   Drawing only: the glowing track + the position of the "grab here" cursor.
+   The auto-advance check (coachTick) is called from draw() SEPARATELY and
+   earlier, because it has to run every tick even when the frame is not
+   redrawn (dirty-render, see scene.js). */
 function coachShapes(world, center){
   // glowing dotted track the player should follow (steps that set coachTrack)
   if(coachTrack){
@@ -300,8 +300,8 @@ function renderLevelPreview(pdb){
     }
     host.innerHTML = '';
     let v;
-    // превью — картинка 480×340 в PNG, качество ленты здесь не важно,
-    // а на телефоне этот вьюер живёт одновременно с основным
+    // the preview is a 480×340 PNG, ribbon quality does not matter here,
+    // and on a phone this viewer is alive alongside the main one
     try{ v = $3Dmol.createViewer(host, qLow()
       ? {backgroundColor:0x0a0e22, cartoonQuality:3, antialias:false}
       : {backgroundColor:0x0a0e22}); }

@@ -166,7 +166,7 @@ function setInfoMode(on){
   } else {
     removeStudyTarget();
     restoreNormal(); hideTip();
-    resetDrawState();                  // сцена пересобрана — вернуть шейпы геймплея
+    resetDrawState();                  // scene was rebuilt — bring the gameplay shapes back
   }
   showToast(on ? '🔎 Наведи курсор на цель, белок, цинк или ДНК' : 'Режим изучения выключен');
 }
@@ -256,8 +256,8 @@ let lastHoverT=0;
 el('viewer').addEventListener('mousemove', e=>{
   if(!infoMode || panning) return;
   const t=performance.now();
-  // pickAtom проецирует все hoverAtoms, так что на слабых машинах реже
-  if(t-lastHoverT < (qLow() ? 60 : 40)) return;    // ~17 / ~25 раз в секунду
+  // pickAtom projects every hoverAtom, so poll less often on weak devices
+  if(t-lastHoverT < (qLow() ? 60 : 40)) return;    // ~17 / ~25 times per second
   lastHoverT=t;
   const r=el('viewer').getBoundingClientRect();
   pickAtom(e.clientX-r.left, e.clientY-r.top);

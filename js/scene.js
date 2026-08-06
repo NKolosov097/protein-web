@@ -6,8 +6,8 @@
 
 /* ---------- 3Dmol init ---------- */
 function init(){
-  // опции берём из профиля качества (js/perf.js): на 'low' — грубее
-  // ленты и без сглаживания, плюс там же ограничен devicePixelRatio
+  // options come from the quality profile (js/perf.js): on 'low' — coarser
+  // ribbons and no antialiasing, and devicePixelRatio is capped there too
   viewer = $3Dmol.createViewer("viewer", viewerOptions());
   el('load').style.display='none';     // nothing is loading until a level is picked
   loadLeaderboard();
@@ -37,7 +37,7 @@ function loadLevel(i){
   try{ viewer.removeAllSurfaces(); }catch(e){}
   viewer.removeAllShapes(); viewer.removeAllLabels(); resetLabels();
   proteinAtoms = []; hoverAtoms = []; pocket = null; wasInPocket = false;
-  resetDrawState();                    // новая сцена → первый кадр обязан перерисоваться
+  resetDrawState();                    // new scene → the first frame must repaint
   solutionPose = null; showSolution = false; syncSolveBtn();   // drop any hint from the previous level
 
   // HUD / title reflect the current target
@@ -74,8 +74,8 @@ function levelLoadError(){
 // build the scene once a structure's atoms are in
 function onModelLoaded(atoms, myGen){
   // STAGE 1 look: translucent surface + cartoon + neon hetero spheres.
-  // Поверхность строится ПОСЛЕ поиска кармана (ниже): на профиле 'low' её
-  // селектор — остатки вокруг цели, а карман к этому моменту ещё не найден.
+  // The surface is built AFTER the pocket search (below): on the 'low' profile its
+  // selector is "residues around the target", and the pocket is not known yet here.
   viewer.setStyle({}, { cartoon:{ color:'spectrum' } });
   viewer.setStyle({ hetflag:true }, { sphere:{ scale:0.4, color:'magenta' } });
   viewer.setStyle({ resn:['HOH','WAT'] }, {});   // hide crystallographic water (clutter, and it looks like the target)
@@ -96,7 +96,7 @@ function onModelLoaded(atoms, myGen){
   const pk = findPocket(proteinAtoms);
   pocket = pk.pos; POCKET_LABEL = pk.label;
   POCKET_ATOMS = buildPocketAtoms();   // protein wall around the target → shape-fit scoring
-  addProteinSurface(0.55);             // теперь известен карман → на 'low' поверхность только вокруг него
+  addProteinSurface(0.55);             // the pocket is known now → on 'low' the surface hugs it
 
   // ligand starts outside so the player guides it toward the target
   lig.x = pocket.x + 26; lig.y = pocket.y + 14; lig.z = pocket.z + 22;
@@ -136,11 +136,11 @@ function onModelLoaded(atoms, myGen){
 /* ---------- protein surface ---------- */
 // (Re)build the VDW surface at a given opacity. Recreating it is the only reliable way
 // to change its transparency — setSurfaceMaterialStyle often has no visible effect.
-/* Селектор «остатки рядом с карманом» для облегчённой поверхности.
-   Собирается из тех же атомов, что и POCKET_ATOMS (см. buildPocketAtoms
-   в scoring.js), но радиусом пошире: поверхность должна закрывать стенку
-   кармана целиком, а не только зону контакта. Возвращает null, если
-   карман ещё не найден — тогда вызывающий строит поверхность как раньше. */
+/* Selector for "residues near the pocket", used by the lightweight surface.
+   Built from the same atoms as POCKET_ATOMS (see buildPocketAtoms in
+   scoring.js) but with a wider radius: the surface has to cover the whole
+   pocket wall, not just the contact zone. Returns null when the pocket has
+   not been found yet — the caller then builds the surface as before. */
 const SURF_R = 16;
 function pocketResidueSel(){
   if(!pocket || !proteinAtoms.length) return null;
@@ -154,18 +154,18 @@ function pocketResidueSel(){
   }
   const chains = Object.keys(byChain);
   if(!chains.length) return null;
-  // 3Dmol понимает {chain:[...], resi:[...]} как пересечение множеств.
-  // Остатки с одинаковым номером в разных цепях тоже попадут — для
-  // полупрозрачной подсветки кармана это приемлемо и заметно дешевле,
-  // чем строить поверхность отдельным вызовом на каждую цепь.
+  // 3Dmol reads {chain:[...], resi:[...]} as an intersection of the two sets,
+  // so residues with the same number in another chain get included too — for a
+  // translucent pocket highlight that is acceptable, and far cheaper than
+  // building the surface with a separate call per chain.
   const resi = [];
   chains.forEach(c => byChain[c].forEach(r => resi.push(r)));
   return { hetflag:false, chain:chains, resi:resi };
 }
 
 function addProteinSurface(op){
-  // на 'low' — только стенка кармана вместо всего белка: прозрачная VDW
-  // поверхность на всю структуру самая дорогая часть кадра по fill-rate
+  // on 'low' — just the pocket wall instead of the whole protein: a translucent
+  // VDW surface over the entire structure is the frame's costliest part by fill-rate
   const sel = (qLow() && pocketResidueSel()) || {hetflag:false};
   const surfP = viewer.addSurface($3Dmol.SurfaceType.VDW,
     {opacity:op, colorscheme:'cyanCarbon'}, sel);
@@ -214,17 +214,17 @@ function syncLabels(){
 // forget cached labels after they are wiped externally (e.g. study mode clears all labels)
 function resetLabels(){ targetLabel=null; ligLabel=null; lastLigLabelPos=''; }
 
-/* ---------- какие кадры «живые» ---------- */
-// игрок держит палец/кнопку на сцене (камера или молекула)
+/* ---------- which frames are "live" ---------- */
+// the player is holding a finger / button down on the scene (camera or molecule)
 function userBusy(){ return camInteracting || draggingLig || rotatingLig || depthLig; }
-// пульсирует ли маркер кармана. На 'low' пульс идёт только пока игрок
-// что-то делает: иначе неподвижная сцена никогда не станет «чистой»
-// и рендеры будут идти в покое, греша батарею.
+// whether the pocket marker pulses. On 'low' the pulse only runs while the player
+// is doing something: otherwise a motionless scene would never become "clean"
+// and renders would keep firing while idle, burning battery.
 function pocketAnimates(){ return !coachHidePocket && (!qLow() || userBusy()); }
 
-// подпись кадра: если она не изменилась и ничего не анимируется — шейпы
-// пересобирать не нужно, старые остаются на месте и корректно вращаются
-// вместе со сценой силами самого 3Dmol.
+// frame signature: if it has not changed and nothing is animating, the shapes need
+// no rebuild — the old ones stay in place and rotate correctly with the scene,
+// courtesy of 3Dmol itself.
 let lastDrawKey = null;
 function drawKey(inPocket){
   return [lig.x.toFixed(3), lig.y.toFixed(3), lig.z.toFixed(3),
@@ -232,11 +232,11 @@ function drawKey(inPocket){
           coachHidePocket?1:0, coachHideDrug?1:0, coachBlinkDrug?1:0,
           showSolution?1:0, coachTrack?1:0, inPocket?1:0].join('|');
 }
-// вызвать, когда сцена пересобрана извне (новый уровень, смена языка,
-// выход из режима изучения) — следующий draw() обязательно перерисует
+// call this when the scene was rebuilt from outside (new level, language switch,
+// leaving study mode) — the next draw() is then guaranteed to repaint
 function resetDrawState(){ lastDrawKey = null; }
 
-/* ---------- HUD (дёшево, обновляется каждый тик) ---------- */
+/* ---------- HUD (cheap, refreshed every tick) ---------- */
 function updateMeter(q, mind){
   el('barFill').style.width = q.pct+'%';
   el('barFill').style.background = q.color;
@@ -254,16 +254,16 @@ function draw(t=0){
   // re-render of the heavy stick view, no ligand shapes).
   if(infoMode) return;
 
-  // ---- дешёвая часть: идёт КАЖДЫЙ тик ----
+  // ---- the cheap part: runs EVERY tick ----
   const {mind, world, center} = minDistance(t);
   const fit = fitEnergy(world);
   const q = quality(fit);
   const inPocket = mind <= 5;
   updateMeter(q, mind);
-  zoneSound(mind);                       // «дзинь» на входе в карман
-  if(coachActive) coachTick(mind, fit);  // автопереходы обучения — до гейта, они меняют флаги
+  zoneSound(mind);                       // "ding" when entering the pocket
+  if(coachActive) coachTick(mind, fit);  // coach auto-advance — before the gate, it flips flags
 
-  // ---- гейт: пересобирать шейпы только если кадр реально изменился ----
+  // ---- the gate: rebuild shapes only if the frame actually changed ----
   const animating = pocketAnimates() || showSolution || coachBlinkDrug || !!coachTrack;
   const key = drawKey(inPocket);
   const dirty = animating || key !== lastDrawKey;
@@ -281,8 +281,8 @@ function draw(t=0){
     // ENVELOP the solution-ghost drug and wash it out (it reads as a dark blinking ball hiding the
     // hint). When the ghost is shown it already marks the spot, so shrink the halo to a small pip
     // that sits inside the empty benzene-ring centre instead of swallowing the whole molecule.
-    // на 'low' в покое пульс замирает (см. pocketAnimates), иначе неподвижная
-    // сцена никогда не станет «чистой» и рендеры пойдут вхолостую
+    // on 'low' the pulse freezes while idle (see pocketAnimates), otherwise a
+    // motionless scene would never go "clean" and renders would run for nothing
     const ph = pocketAnimates() ? Math.sin(t*1.5) : 0;
     const pulse = showSolution ? 1.0 + 0.15*ph : 2.4 + 0.5*ph;
     viewer.addSphere({center:pocket, radius:pulse, color:'#39ff14', opacity:0.22});
@@ -336,7 +336,7 @@ function draw(t=0){
   }
 
   // guided tutorial overlay: track + "grab here" cursor (adds shapes, so before render).
-  // Автопереходы (coachTick) уже вызваны выше, до гейта dirty-render.
+  // Auto-advance (coachTick) already ran above, before the dirty-render gate.
   if(coachActive) coachShapes(world, center);
 
   viewer.render();
@@ -360,7 +360,7 @@ function animate(myGen){
   if(myGen !== gen) return;
   requestAnimationFrame(ts=>{
     if(myGen !== gen) return;                 // level switched → let this loop die
-    if(ts - lastFrameTs >= (qLow() ? 80 : 45)){   // ~12 fps на 'low', ~20 fps на 'high'
+    if(ts - lastFrameTs >= (qLow() ? 80 : 45)){   // ~12 fps on 'low', ~20 fps on 'high'
       lastFrameTs = ts;
       if(!camInteracting){ breath += 0.06; draw(breath); }
     }

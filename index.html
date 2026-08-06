@@ -12,7 +12,7 @@
   <div id="hdrText">
     <h1>PROTEIN&nbsp;DOCKER</h1>
     <div class="sub" id="hdrSub">МИШЕНЬ: —</div>
-    <!-- счёт на мобиле переезжает сюда: панель #score там скрыта -->
+    <!-- on mobile the score moves here: the #score panel is hidden there -->
     <div class="sub mobileOnly" id="hdrScore"></div>
   </div>
   <button class="iconBtn" id="btnSound" title="Звук вкл/выкл">🔇</button>
@@ -39,9 +39,9 @@
   <div style="margin-top:5px;color:#6f8bbf">Клавиши: <kbd>← ↑ → ↓</kbd> <kbd>W</kbd>/<kbd>S</kbd> двигать · <kbd>Q E A D Z C</kbd> вращать</div>
 </div>
 
-<!-- Нижние панели живут в одной обёртке: на десктопе она display:contents
-     (полностью прозрачна, дети позиционируются fixed как раньше), на
-     мобиле становится flex-столбиком, и высоты складываются сами. -->
+<!-- The bottom panels live in one wrapper: on desktop it is display:contents
+     (fully transparent, the fixed children position exactly as before), on
+     mobile it becomes a flex column so the panel heights stack by themselves. -->
 <div id="bottomBar">
 
   <div id="modeBar" class="mobileOnly">
@@ -63,7 +63,7 @@
 
   <div id="actions" class="panel">
     <button class="b-dock" id="btnDock">▶ ТЕСТ ЛЕКАРСТВА</button>
-    <!-- на мобиле этот блок уезжает в выдвижной лист по кнопке ☰ -->
+    <!-- on mobile this block slides away into the bottom sheet behind ☰ -->
     <div id="actionsRest">
       <button class="b-ghost" id="btnSolve">💡 ПОДСКАЗКА</button>
       <button class="b-ghost" id="btnLevels">🗂 УРОВНИ</button>
@@ -78,7 +78,7 @@
 
 </div>
 
-<!-- затемнение под выдвижным листом и модалкой лидеров -->
+<!-- scrim behind the bottom sheet and the leaderboard modal -->
 <div id="sheetBack"></div>
 
 <div id="tut">

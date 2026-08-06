@@ -4,17 +4,17 @@
   --txt:#cfe6ff;
 }
 *{box-sizing:border-box}
-/* элементы, существующие только в мобильной вёрстке (см. css/mobile.css) */
+/* elements that only exist in the mobile layout (see css/mobile.css) */
 .mobileOnly{display:none}
-/* обёртка нижних панелей: на десктопе прозрачна, дети остаются fixed */
+/* wrapper for the bottom panels: transparent on desktop, children stay fixed */
 #bottomBar{display:contents}
-/* по умолчанию скрыты: переключатель режимов, затемнение выдвижного листа */
+/* hidden by default: the mode switcher and the bottom-sheet scrim */
 #modeBar{display:none}
 #sheetBack{display:none}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);
   font-family:"Segoe UI",system-ui,sans-serif;overflow:hidden}
-/* touch-action:none — иначе на телефоне жест по сцене скроллит страницу,
-   а двойной тап зумит вёрстку вместо структуры */
+/* touch-action:none — otherwise a gesture over the scene scrolls the page on a
+   phone, and a double tap zooms the layout instead of the structure */
 #viewer{position:fixed;inset:0;width:100vw;height:100vh;touch-action:none}
 /* neon grid backdrop */
 body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
@@ -63,7 +63,7 @@ kbd{background:#0e1738;border:1px solid var(--line);border-radius:5px;padding:1p
 
 /* buttons bottom-right */
 #actions{bottom:18px;right:16px;padding:12px;display:flex;flex-direction:column;gap:8px}
-/* на десктопе вложенный блок просто продолжает столбик кнопок */
+/* on desktop the nested block simply continues the button column */
 #actionsRest{display:flex;flex-direction:column;gap:8px}
 button{cursor:pointer;font-family:inherit;font-weight:700;letter-spacing:1px;color:#001018;
   border:none;border-radius:10px;padding:11px 16px;font-size:13px;transition:transform .08s, box-shadow .2s}

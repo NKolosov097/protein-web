@@ -41,9 +41,9 @@ function ligHit(mx, my){
 
 // 3D anchor point under the cursor: the atom whose projection is nearest to it.
 // Returns null when the cursor is over empty space (too far from any atom).
-// Проецируется не весь белок, а прореженная выборка: точка привязки нужна
-// только чтобы «приколоть» место под курсором при зуме, и промах на пару
-// ангстрем незаметен, а полноатомная проекция на каждый тик колеса дорога.
+// We project a thinned-out sample rather than the whole protein: the anchor only
+// has to "pin" the spot under the cursor while zooming, so being off by a couple of
+// Ångström is invisible, while projecting every atom on each wheel tick is expensive.
 let anchorPool = null, anchorPoolGen = -1;
 function anchorAtoms(){
   if(anchorPoolGen !== gen || !anchorPool){
@@ -188,16 +188,16 @@ el('viewer').addEventListener('mousemove', e=>{
   el('viewer').style.cursor = ligHit(e.clientX-r.left, e.clientY-r.top) ? 'grab' : '';
 });
 
-/* ---------- ТАЧ: только флаг «камера в работе» ----------
-   3Dmol сам вешает touchstart/touchmove/touchend на свой canvas и
-   маппит их на собственные mouse-обработчики, поэтому орбита и пинч
-   на телефоне работали и раньше. Чего не хватало — camInteracting:
-   он выставлялся ТОЛЬКО в mouse-ветке, из-за чего animate() не
-   замирал во время тач-вращения и каждые 45 мс пересобирал шейпы и
-   делал второй render поверх рендера 3Dmol. Отсюда и подвисания.
+/* ---------- TOUCH: the "camera is busy" flag only ----------
+   3Dmol installs its own touchstart/touchmove/touchend on its canvas and
+   maps them onto its mouse handlers, so orbiting and pinching on a phone
+   worked before too. What was missing is camInteracting: it was set ONLY
+   in the mouse branch, so animate() never froze during a touch rotation
+   and kept rebuilding the shapes and firing a second render on top of
+   3Dmol's own every 45ms. That was the stutter.
 
-   Здесь обрабатывается только флаг. Полное управление молекулой
-   пальцем добавляется в js/controls.js ниже (см. план, Task 10). */
+   Only the flag is handled here. Full finger control of the molecule is
+   added further down this file (see the plan, Task 10). */
 el('viewer').addEventListener('touchstart', ()=>{ camInteracting = true; }, {passive:true, capture:true});
 function releaseCamTouch(e){ camInteracting = e.touches.length > 0; }
 el('viewer').addEventListener('touchend',    releaseCamTouch, {passive:true, capture:true});

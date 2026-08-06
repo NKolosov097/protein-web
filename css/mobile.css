@@ -1,39 +1,40 @@
 /* ============================================================
-   МОБИЛЬНАЯ ВЁРСТКА
+   MOBILE LAYOUT
    ------------------------------------------------------------
-   Единственный порог во всём проекте: узкий экран ИЛИ грубый
-   указатель (палец). Других медиазапросов по ширине не вводить.
+   The single breakpoint in the whole project: narrow screen OR
+   coarse pointer (a finger). Do not introduce other width media
+   queries.
 
-   Раскладка снизу вверх: переключатель режимов → метр → кнопка
-   «ТЕСТ ЛЕКАРСТВА». Все три лежат в #bottomBar, который здесь
-   становится flex-столбиком, поэтому отступы не захардкожены и
-   не разъезжаются, когда текст подсказки меняет высоту метра.
+   Layout bottom-up: mode switcher → meter → the "ТЕСТ ЛЕКАРСТВА"
+   button. All three live in #bottomBar, which becomes a flex
+   column here, so the offsets are not hard-coded and do not drift
+   when the hint text changes the meter's height.
    ============================================================ */
 @media (max-width: 820px), (pointer: coarse){
 
-  /* ---------- включаем мобильные элементы ---------- */
+  /* ---------- turn the mobile-only elements on ---------- */
   .mobileOnly{display:block}
   #modeBar{display:flex}
 
-  /* ---------- хедер: компактный, в одну строку ---------- */
+  /* ---------- header: compact, one line ---------- */
   #hdr{top:6px;left:6px;right:6px;padding:8px 10px;gap:8px}
   #hdrText{flex:1;min-width:0}
   #hdr h1{font-size:12px;letter-spacing:1.5px}
   #hdrSub{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   #hdrScore{font-size:10px;color:var(--cyan);letter-spacing:1px;margin-top:2px;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .iconBtn{width:44px;height:44px;font-size:19px}   /* минимум 44px под палец */
+  .iconBtn{width:44px;height:44px;font-size:19px}   /* at least 44px for a finger */
 
-  /* ---------- панели, которых на телефоне нет ---------- */
-  /* #score схлопнут в #hdrScore, #lb открывается кнопкой 🏆 из листа,
-     #help описывал управление мышью — на тач-устройстве он просто неверен */
+  /* ---------- panels that do not exist on a phone ---------- */
+  /* #score is collapsed into #hdrScore, #lb opens from the sheet's 🏆 button,
+     #help described mouse controls — on a touch device it is simply wrong */
   #score, #lb, #help{display:none}
 
-  /* ---------- нижний стек ---------- */
+  /* ---------- the bottom stack ---------- */
   #bottomBar{position:fixed;z-index:6;left:6px;right:6px;bottom:0;
     display:flex;flex-direction:column;gap:6px;
     padding-bottom:calc(6px + env(safe-area-inset-bottom))}
-  /* дети перестают позиционироваться сами — их раскладывает стек */
+  /* the children stop positioning themselves — the stack lays them out */
   #meter, #actions{position:static;left:auto;right:auto;bottom:auto;
     transform:none;width:auto;max-width:none}
   #meter{padding:9px 12px}
@@ -43,7 +44,7 @@
   #actions{padding:0;border:none;background:none;box-shadow:none;backdrop-filter:none}
   #btnDock{width:100%;padding:15px 16px;font-size:15px}
 
-  /* ---------- переключатель режимов ---------- */
+  /* ---------- mode switcher ---------- */
   #modeBar{gap:6px}
   #modeBar button{flex:1;min-height:44px;padding:9px 4px;font-size:11px;letter-spacing:.5px;
     background:var(--panel);color:#7f9cc9;border:1px solid var(--line);border-radius:12px;
@@ -51,7 +52,7 @@
   #modeBar button.on{background:linear-gradient(90deg,rgba(34,224,255,.20),rgba(161,91,255,.20));
     color:var(--cyan);border-color:var(--cyan);box-shadow:0 0 12px rgba(33,224,255,.25)}
 
-  /* ---------- выдвижной лист с остальными кнопками ---------- */
+  /* ---------- bottom sheet with the secondary buttons ---------- */
   #actionsRest{position:fixed;z-index:71;left:0;right:0;bottom:0;
     padding:14px 12px calc(18px + env(safe-area-inset-bottom));
     gap:10px;border-radius:18px 18px 0 0;
@@ -64,12 +65,12 @@
   #sheetBack.show{display:block;position:fixed;inset:0;z-index:70;
     background:rgba(2,4,12,.6);backdrop-filter:blur(2px)}
 
-  /* ---------- лидеры как модалка ---------- */
+  /* ---------- leaderboard as a modal ---------- */
   #lb.asModal{display:block;position:fixed;z-index:72;left:12px;right:12px;top:50%;
     transform:translateY(-50%);width:auto;padding:18px 20px}
   #lb.asModal ol{font-size:15px;line-height:2.1}
 
-  /* ---------- модалки на весь экран ---------- */
+  /* ---------- full-screen modals ---------- */
   #tutCard, #levelsCard, #coachDoneCard{width:calc(100vw - 12px);max-height:88vh;
     overflow:auto;padding:20px 16px;border-radius:16px}
   #levelGrid{grid-template-columns:1fr}
@@ -78,27 +79,27 @@
     display:flex;align-items:center;justify-content:flex-end;top:8px;right:10px}
   .cdPreviewWrap{height:150px}
 
-  /* ---------- обучение: пузырь на всю ширину ---------- */
+  /* ---------- coach: full-width narration bubble ---------- */
   #coach{left:6px;right:6px;width:auto;transform:translateY(14px);
     bottom:calc(6px + env(safe-area-inset-bottom));padding:14px 16px 16px}
   #coach.show{transform:none}
   #coachText{font-size:13px;min-height:0}
-  /* во время обучения переключатель режимов появляется только когда он
-     нужен (шаг 3), иначе его перекрывает пузырь с текстом */
+  /* during onboarding the mode switcher only appears when it is actually
+     needed (step 3), otherwise the narration bubble covers it */
   body.coaching #modeBar{display:none}
   body.coaching.coach-modes #modeBar{display:flex}
 
-  /* ---------- подсказка режима изучения — плашкой снизу ---------- */
+  /* ---------- study-mode tooltip — as a bottom sheet ---------- */
   #tip.sheet{left:6px !important;right:6px !important;top:auto !important;
     bottom:calc(6px + env(safe-area-inset-bottom)) !important;
     max-width:none;font-size:13px}
 
-  /* ---------- тост ---------- */
+  /* ---------- toast ---------- */
   #toast{width:calc(100vw - 24px);font-size:15px;padding:14px 16px;
     white-space:normal;text-align:center;letter-spacing:1px}
 }
 
-/* ---------- ландшафт: по вертикали почти ничего нет ---------- */
+/* ---------- landscape: almost no vertical room ---------- */
 @media (max-height: 500px) and (pointer: coarse){
   #mission{display:none}
   #hdrScore{display:none}

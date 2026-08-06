@@ -1,9 +1,9 @@
 /* ============================================================
-   SELF-TEST — крошечный харнесс проверки чистых функций.
-   Запускается только при `?selftest` в URL: открой
-   index.html?selftest и смотри консоль. Автотест-раннера в
-   проекте нет (нет ни сборки, ни npm) — это его замена для
-   логики без DOM и без 3D.
+   SELF-TEST — a tiny harness for checking the pure functions.
+   Runs only with `?selftest` in the URL: open
+   index.html?selftest and watch the console. There is no test
+   runner in this project (no build step, no npm) — this is its
+   stand-in for logic that needs neither DOM nor 3D.
    ============================================================ */
 const SELFTEST = /[?&]selftest\b/.test(location.search);
 let stPass = 0, stFail = 0;
@@ -18,7 +18,7 @@ function stEq(name, got, want){
 }
 
 function runSelfTest(){
-  // ---- perf: разрешение профиля качества ----
+  // ---- perf: resolving the quality profile ----
   stEq('resolveQuality: auto + coarse → low',   resolveQuality('auto',  true),  'low');
   stEq('resolveQuality: auto + fine → high',    resolveQuality('auto',  false), 'high');
   stEq('resolveQuality: пусто + coarse → low',  resolveQuality(null,    true),  'low');
@@ -27,7 +27,7 @@ function runSelfTest(){
   stEq('resolveQuality: явный high перебивает', resolveQuality('high',  true),  'high');
   stEq('resolveQuality: мусор → как auto',      resolveQuality('bogus', true),  'low');
 
-  // ---- perf: цикл предпочтения качества ----
+  // ---- perf: the quality-preference cycle ----
   stEq('nextQualityPref: auto → low',  nextQualityPref('auto'), 'low');
   stEq('nextQualityPref: low → high',  nextQualityPref('low'),  'high');
   stEq('nextQualityPref: high → auto', nextQualityPref('high'), 'auto');
