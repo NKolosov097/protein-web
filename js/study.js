@@ -264,3 +264,6 @@ el('viewer').addEventListener('mousemove', e=>{
   if(hoverInfo) showTip(hoverInfo.text, e.clientX, e.clientY); else hideTip();
 });
 el('viewer').addEventListener('mouseleave', ()=>{ hoverInfo=null; clearHi(); hideTip(); });
+
+// tap on the scene in study mode (the mobile counterpart of hover). Full version — Task 12.
+function studyTap(mx, my){ pickAtom(mx, my); }
