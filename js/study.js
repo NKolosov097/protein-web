@@ -256,7 +256,8 @@ let lastHoverT=0;
 el('viewer').addEventListener('mousemove', e=>{
   if(!infoMode || panning) return;
   const t=performance.now();
-  if(t-lastHoverT < 40) return;    // throttle ~25 times/sec
+  // pickAtom проецирует все hoverAtoms, так что на слабых машинах реже
+  if(t-lastHoverT < (qLow() ? 60 : 40)) return;    // ~17 / ~25 раз в секунду
   lastHoverT=t;
   const r=el('viewer').getBoundingClientRect();
   pickAtom(e.clientX-r.left, e.clientY-r.top);

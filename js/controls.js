@@ -41,16 +41,28 @@ function ligHit(mx, my){
 
 // 3D anchor point under the cursor: the atom whose projection is nearest to it.
 // Returns null when the cursor is over empty space (too far from any atom).
+// Проецируется не весь белок, а прореженная выборка: точка привязки нужна
+// только чтобы «приколоть» место под курсором при зуме, и промах на пару
+// ангстрем незаметен, а полноатомная проекция на каждый тик колеса дорога.
+let anchorPool = null, anchorPoolGen = -1;
+function anchorAtoms(){
+  if(anchorPoolGen !== gen || !anchorPool){
+    anchorPool = downsample(proteinAtoms, 1200);
+    anchorPoolGen = gen;
+  }
+  return anchorPool;
+}
 function anchorFor(mx, my){
   if(!proteinAtoms.length) return null;
-  const scr = viewer.modelToScreen(proteinAtoms);
+  const pool = anchorAtoms();
+  const scr = viewer.modelToScreen(pool);
   let best=-1, bd=Infinity;
   for(let i=0;i<scr.length;i++){
     const dx=scr[i].x-mx, dy=scr[i].y-my, d=dx*dx+dy*dy;
     if(d<bd){ bd=d; best=i; }
   }
   if(best<0 || bd > 300*300) return null;
-  const a=proteinAtoms[best];
+  const a=pool[best];
   return {x:a.x, y:a.y, z:a.z};
 }
 // mouse wheel — intuitive zoom (up = zoom in), TOWARD THE CURSOR. Intercepted before 3Dmol.
