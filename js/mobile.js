@@ -12,10 +12,14 @@
 /* ---------- bottom sheet ---------- */
 function openSheet(){
   el('actionsRest').classList.add('open');
+  // body.sheetOpen lifts #bottomBar (and with it the sheet) above the scrim, and
+  // keeps the sheet usable while the coach hides the action panel — see css/mobile.css
+  document.body.classList.add('sheetOpen');
   el('sheetBack').classList.add('show');
 }
 function closeSheet(){
   el('actionsRest').classList.remove('open');
+  document.body.classList.remove('sheetOpen');
   el('lb').classList.remove('asModal');
   el('sheetBack').classList.remove('show');
 }
@@ -38,6 +42,7 @@ el('btnBoard').onclick = ()=>{
     return;
   }
   el('actionsRest').classList.remove('open');
+  document.body.classList.remove('sheetOpen');   // the scrim now belongs to the 🏆 modal
   el('lb').classList.add('asModal');
   el('sheetBack').classList.add('show');   // a tap on the scrim closes it
 };
