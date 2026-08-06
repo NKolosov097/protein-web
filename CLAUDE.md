@@ -6,14 +6,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Protein Docker** — a browser game where the player steers a small "drug" molecule into the
 functional pocket of a real cancer-target protein (loaded live from the PDB) rendered in 3D via
-[3Dmol.js](https://3Dmol.org). It measures the fit, scores it, and celebrates. The UI is in
-**Russian**; keep new user-facing strings in Russian to match. Deployed as a static site to
-GitHub Pages.
+[3Dmol.js](https://3Dmol.org). It measures the fit, scores it, and celebrates. The UI is
+**bilingual (English / Russian)**: every user-facing string lives in `js/lang-en.js` and
+`js/lang-ru.js` — add new ones to **both**, never as a literal in a module. Plays on desktop
+and on phones. Deployed as a static site to GitHub Pages.
 
 ## Running & tooling
 
-There is **no build step, no bundler, no test suite, no linter, and no package.json.** The frontend
-is plain static files.
+There is **no build step, no bundler, no linter, and no package.json.** The frontend is plain
+static files. There is no test runner either — instead `js/selftest.js` checks the pure functions
+(quality profile, language detection, `t()` substitution, segment projection, dictionary parity)
+when the page is opened with `?selftest` in the URL: `index.html?selftest`, results in the console.
+Run it after any change to those areas.
 
 - **Run the game:** open `index.html` directly in a browser, or serve the folder
   (`python -m http.server`) and open it. An **internet connection is required** — `3Dmol-min.js`
@@ -37,7 +41,11 @@ and call each other by bare name. `index.html` loads them in strict dependency o
 comment block there). The two anchors:
 
 - `js/state.js` loads **first** — it defines the DOM helper `el()` and all cross-cutting mutable
-  globals (`viewer`, `lig`, `pocket`, `LEVEL`, `score`, the `coach*` flags, etc.).
+  globals (`viewer`, `lig`, `pocket`, `LEVEL`, `score`, `touchMode`, the `coach*` flags, etc.).
+  `perf.js`, the two dictionaries and `i18n.js` follow immediately, because every later module
+  calls `t()` at load time. Full order:
+  `state → perf → lang-en → lang-ru → i18n → levels-data → geometry → scoring → scene →
+  controls → study → hud → tutorial → levels → coach → mobile → selftest → main`.
 - `js/main.js` loads **last** — its only job is to call `init()`.
 
 Feature modules keep their own local state next to their code; only genuinely cross-cutting state
@@ -48,8 +56,12 @@ dependency chain in `index.html`.
 
 - `scene.js` — 3Dmol setup (`init`), level loading (`loadLevel` → `onModelLoaded`), the surface,
   cached labels, the per-frame gameplay render (`draw`), and the `requestAnimationFrame` loop.
-- `controls.js` — keyboard nudges + direct mouse manipulation of the ligand (grab/rotate/depth)
-  and cursor-anchored wheel zoom. Movement is **camera-relative** via `camBasis()`.
+- `controls.js` — keyboard nudges, direct **mouse and touch** manipulation of the ligand
+  (grab/rotate/depth) and cursor-anchored wheel zoom. Both input paths go through the same
+  `ligMove` / `ligRotate` / `ligDepth`, so mouse and finger behave identically. Movement is
+  **camera-relative** via `camBasis()`. On touch, one finger on the molecule drives the mode
+  selected in `#modeBar`, one finger on the background orbits the camera (3Dmol's own handling),
+  two fingers zoom.
 - `geometry.js` — pure math: vectors, Euler↔matrix, and `camBasis()` (world-space right/up/fwd
   derived from the live camera, used everywhere for screen-relative movement).
 - `scoring.js` — `findPocket()` (per-level docking target), `buildPocketAtoms()`, `fitEnergy()`
@@ -59,7 +71,15 @@ dependency chain in `index.html`.
   zoom-based detail level (whole-chain when zoomed out, single residue when zoomed in).
 - `hud.js` — the action buttons, drug-test scoring flow, toast/fireworks, WebAudio blips, and the
   localStorage leaderboard.
-- `levels-data.js` — the `LEVELS` array (the real PDB targets + per-level pocket strategy).
+- `levels-data.js` — the `LEVELS` array: **structure only** (id, `pdb`, `open`, pocket strategy).
+  All level text lives in the dictionaries under `levels.<id>.*` and `hotspot.<id>.<resi>`.
+- `perf.js` — the graphics quality profile (`QUALITY` = `low` on touch devices, `high` otherwise;
+  `pd_quality` overrides it). Owns the `devicePixelRatio` cap, `viewerOptions()` and the
+  ⚙ ГРАФИКА button. Must load early: the DPR cap has to be in place before `createViewer`.
+- `i18n.js` + `lang-en.js` / `lang-ru.js` — the translation runtime (`t()`, `numFmt()`,
+  `applyI18n()`, `setLang()`, `refreshDynamicText()`) and the two flat dictionaries.
+- `mobile.js` — the mobile UI shell: bottom sheet (☰), leaderboard modal, ligand mode switcher.
+- `selftest.js` — the `?selftest` harness.
 - `levels.js` — level picker UI + progress/unlock logic.
 - `tutorial.js` — the static "ОБ ИГРЕ" reference decks (tabbed modal).
 - `coach.js` — the dynamic in-scene onboarding that runs on level 1 (camera flights, magnetic
@@ -81,7 +101,7 @@ implement the **same** shape-contact binding formula intentionally, so the brows
 produce identical numbers. If you change one, change the other to match. (The backend also has a
 real AutoDock Vina path, currently gated behind missing `.pdbqt` receptors and off by default.)
 
-### Two conventions worth knowing
+### Conventions worth knowing
 
 - **`gen` (generation counter):** `loadLevel()` bumps the global `gen`; async work (PDB downloads,
   the animation loop) captures `myGen` and bails when `myGen !== gen`. This is how switching levels
@@ -93,8 +113,19 @@ real AutoDock Vina path, currently gated behind missing `.pdbqt` receptors and o
   **protein centroid**, which is *not* the pocket — to center the target, measure its screen
   position with `modelToScreen()` and `translate()` it to the middle (see `recenter()` in `coach.js`
   and the framing block in `onModelLoaded`).
+- **Dirty-render:** `draw()` runs its cheap half every tick (distance, energy, meter, sound, coach
+  auto-advance) but rebuilds the ~20 ligand/target shapes and calls `viewer.render()` only when the
+  frame actually changed — see `drawKey()`/`pocketAnimates()` in `scene.js`. Call
+  `resetDrawState()` whenever the scene is rebuilt from outside (new level, language switch,
+  leaving study mode), or the next frame will be considered unchanged and skipped.
+- **`camInteracting` must be set from every input path.** It is what stops the gameplay loop from
+  fighting 3Dmol's own render while the camera moves. It was missing on touch, and that alone was
+  the mobile stutter.
 
 ### Persistence (localStorage)
 
 All progress is client-side: `pd_last_level` (auto-resume), `pd_levels` (per-level attempted/solved/
-best energy), `pd_board` (leaderboard), `pd_score_seen` (first-test explainer flag).
+best energy), `pd_board` (leaderboard), `pd_score_seen` (first-test explainer flag),
+`pd_lang` (`en`/`ru`; absent → browser language, everything but a `ru` prefix falls back to `en`),
+`pd_quality` (`auto`/`low`/`high`; changing it reloads the page, because the DPR cap and
+`cartoonQuality` only apply at viewer creation).

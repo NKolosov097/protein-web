@@ -2,8 +2,9 @@
    STUDY MODE ("ИЗУЧЕНИЕ") — hover any part of the structure to learn
    what it is. Manages its own highlighting, detail level (ribbon vs
    individual residue by zoom), target marker and HTML tooltip.
-   HOTSPOTS (frequent cancer mutations) are per-level — set from
-   LEVEL.hotspots on load (see onModelLoaded).
+   HOTSPOTS (frequent cancer mutations) are per-level — the residue
+   list is set on load (see onModelLoaded) and the texts come from
+   the dictionaries via hotspotText() (see js/i18n.js).
    ============================================================ */
 
 // summarise each polymer chain once (how many residues / nucleotides it has)
@@ -21,26 +22,22 @@ function buildChainStats(){
 function annotate(a, mode){
   const resn=(a.resn||'').toUpperCase(), resi=a.resi, chain=a.chain||'?';
   const elem=(a.elem||'').toUpperCase();
-  const NM = LEVEL ? LEVEL.name : 'белок';
-  if(elem==='ZN' || resn==='ZN')
-    return `🎯 ИОН ЦИНКА (Zn²⁺)\nСтруктурная опора ядра ${NM} — наша мишень для стыковки.`;
-  if(resn==='HOH' || resn==='WAT')
-    return '💧 Молекула воды\nЧасть кристаллической структуры, а не самого белка.';
-  if(a.het)
-    return `🔶 ${resn} · цепь ${chain}\nИон или малая молекула, связанная со структурой${LEVEL && !LEVEL.open && LEVEL.drug ? ' (в т.ч. само лекарство — цель стыковки)' : ''}.`;
+  const NM = LEVEL ? levelName(LEVEL) : t('study.proteinFallback');
+  if(elem==='ZN' || resn==='ZN') return t('study.zn', {name:NM});
+  if(resn==='HOH' || resn==='WAT') return t('study.water');
+  if(a.het) return t('study.het', {resn, chain,
+    extra: (LEVEL && !LEVEL.open && levelDrug(LEVEL)) ? t('study.hetDrug') : ''});
   const n = CHAIN_STATS[chain] ? CHAIN_STATS[chain].res.size : '?';
 
   if(DNA_RESN.includes(resn)){
-    if(mode==='chain')
-      return `🧬 ДНК · цепь ${chain}\nНить из ${n} нуклеотидов. Раковые белки вроде ${NM}\nконтактируют с ДНК и управляют работой генов.\n🔍 Приблизься, чтобы навести на отдельный нуклеотид.`;
-    return `🧬 Нуклеотид ${resn}${resi} · цепь ${chain}\nОтдельное звено нити ДНК рядом с белком ${NM}.`;
+    if(mode==='chain') return t('study.dnaChain', {chain, n, name:NM});
+    return t('study.dnaRes', {resn, resi, chain, name:NM});
   }
 
-  if(mode==='chain')
-    return `🔷 Цепь ${chain} — белок ${NM}\nЛента из ${n} аминокислот.\n🔍 Приблизься, чтобы навести на отдельную аминокислоту.`;
-  let s = `🔷 ${resn}${resi} · цепь ${chain}`;
-  s += HOTSPOTS[resi] ? '\n★ '+HOTSPOTS[resi] : `\nАминокислота белка ${NM}.`;
-  return s;
+  if(mode==='chain') return t('study.chain', {chain, name:NM, n});
+  const hs = LEVEL ? hotspotText(LEVEL.id, resi) : null;
+  return t('study.resHead', {resn, resi, chain}) +
+         (hs ? '\n★ ' + hs : '\n' + t('study.resPlain', {name:NM}));
 }
 let curHi=null, prevHi=null, focused=false;
 const DIM = 0.7;   // opacity of everything except the hovered object (lower = darker)
@@ -141,7 +138,7 @@ let studyTargetLabel = null;
 function addStudyTarget(){
   if(!pocket) return;
   viewer.addSphere({center:pocket, radius:1.7, color:'#39ff14', opacity:0.25});   // halo, non-pickable
-  studyTargetLabel = viewer.addLabel('◎ ЦЕЛЬ стыковки — наведи, чтобы узнать', {
+  studyTargetLabel = viewer.addLabel(t(IS_TOUCH ? 'study.targetLabelTouch' : 'study.targetLabel'), {
     position:{x:pocket.x, y:pocket.y+12, z:pocket.z},
     backgroundColor:'#04220a', backgroundOpacity:0.8,
     fontColor:'#39ff14', fontSize:12, borderThickness:1.4, borderColor:'#39ff14',
@@ -152,11 +149,14 @@ function addStudyTarget(){
 function removeStudyTarget(){
   if(studyTargetLabel){ viewer.removeLabel(studyTargetLabel); studyTargetLabel=null; }
 }
+function syncInfoBtn(){
+  el('btnInfo').textContent = infoMode ? t('btn.study.on') : t('btn.study');
+  el('btnInfo').classList.toggle('b-dock', infoMode);
+  el('btnInfo').classList.toggle('b-ghost', !infoMode);
+}
 function setInfoMode(on){
   infoMode=on; hoverInfo=null;
-  el('btnInfo').textContent = on ? '🔎 ИЗУЧЕНИЕ: ВКЛ' : '🔎 ИЗУЧЕНИЕ';
-  el('btnInfo').classList.toggle('b-dock', on);
-  el('btnInfo').classList.toggle('b-ghost', !on);
+  syncInfoBtn();
   el('viewer').style.cursor = on ? 'crosshair' : '';
   if(on){
     viewer.removeAllShapes(); viewer.removeAllLabels();  // clear leftover gameplay ligand/target
@@ -166,11 +166,12 @@ function setInfoMode(on){
   } else {
     removeStudyTarget();
     restoreNormal(); hideTip();
+    resetDrawState();                  // scene was rebuilt — bring the gameplay shapes back
   }
-  showToast(on ? '🔎 Наведи курсор на цель, белок, цинк или ДНК' : 'Режим изучения выключен');
+  showToast(on ? t(IS_TOUCH ? 'toast.studyOnTouch' : 'toast.studyOn') : t('toast.studyOff'));
 }
 el('btnInfo').onclick = ()=>{
-  if(!LEVEL && !infoMode){ showToast('Сначала выбери мишень — 🗂 УРОВНИ'); return; }
+  if(!LEVEL && !infoMode){ showToast(t('toast.pickFirst')); return; }
   setInfoMode(!infoMode);
 };
 
@@ -255,10 +256,27 @@ let lastHoverT=0;
 el('viewer').addEventListener('mousemove', e=>{
   if(!infoMode || panning) return;
   const t=performance.now();
-  if(t-lastHoverT < 40) return;    // throttle ~25 times/sec
+  // pickAtom projects every hoverAtom, so poll less often on weak devices
+  if(t-lastHoverT < (qLow() ? 60 : 40)) return;    // ~17 / ~25 times per second
   lastHoverT=t;
   const r=el('viewer').getBoundingClientRect();
   pickAtom(e.clientX-r.left, e.clientY-r.top);
   if(hoverInfo) showTip(hoverInfo.text, e.clientX, e.clientY); else hideTip();
 });
 el('viewer').addEventListener('mouseleave', ()=>{ hoverInfo=null; clearHi(); hideTip(); });
+
+/* ---------- study mode on touch ----------
+   A phone has no hover, so the tooltip is summoned by a tap, and the #tip plate
+   itself is pinned full-width to the bottom of the screen (class .sheet, styles
+   in css/mobile.css) — placing it at the pointer is pointless, the finger would
+   cover it. Another tap on empty space dismisses it. */
+function studyTap(mx, my){
+  pickAtom(mx, my);
+  if(hoverInfo){
+    const t = el('tip');
+    t.classList.add('sheet');
+    showTip(hoverInfo.text, 0, 0);   // the position comes from css/mobile.css
+  } else {
+    hideTip();
+  }
+}

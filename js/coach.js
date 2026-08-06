@@ -108,36 +108,46 @@ function coachBubble(icon, html, showNext){
 // current drug centre (no breathing) — the track start / camera focus
 function drugCenter(){ return minDistance(0).center; }
 
+/* The narration lines per step, as a table, so the same line can be re-rendered
+   on a language switch (coachRefreshBubble) without flying the camera again and
+   without rebuilding the magnetic track. */
+const COACH_BUBBLES = [
+  ()=>['🧬', t('coach.0', {name: LEVEL ? levelName(LEVEL) : t('coach.thisProtein')}), true],
+  ()=>['🔑', t('coach.1'), true],
+  ()=>['🎯', t('coach.2'), true],
+  ()=>[IS_TOUCH ? '👆' : '🖱', t(IS_TOUCH ? 'coach.3.touch' : 'coach.3.mouse'), false],
+  ()=>['🔄', t(IS_TOUCH ? 'coach.4.touch' : 'coach.4.mouse'), false],
+  ()=>['✅', t('coach.5'), false],
+];
+function coachRefreshBubble(){
+  const make = COACH_BUBBLES[coachStep];
+  if(!coachActive || !make) return;
+  const b = make();
+  coachBubble(b[0], b[1], b[2]);
+}
+
 function coachGoto(n){
   coachStep = n;
   document.body.classList.toggle('coach-actions', n===5);   // action menu only for the TEST step
+  // the mode switcher is needed from step 3 on (before that the bubble covers it)
+  document.body.classList.toggle('coach-modes', n>=3);
   const P = pocket;
-  const NM = LEVEL ? LEVEL.name : 'этот белок';
   switch(n){
     case 0:   // ---- overview: just the protein (pulled back so it fits), no pocket, no drug ----
       coachHidePocket = true; coachHideDrug = true; coachBlinkDrug = false; coachMagnet = false;
       coachTrack = null; showSolution = false; syncSolveBtn();
       // whole cell, pulled back a bit and lifted so it doesn't sit behind the bottom bubble
       tweenView(captureTarget(()=>{ viewer.zoomTo({}); viewer.zoom(0.72); viewer.translate(0, 30); }), 800);
-      coachBubble('🧬',
-        `Перед тобой раковый белок <b>${NM}</b>. В опухолевой клетке он «сломан» и не даёт ей ` +
-        `остановить деление. Сейчас разберёмся, как его «выключить». <span class="hlc">Нажми «Далее»</span>.`, true);
       break;
     case 1:   // ---- the drug (centre it up close) ----
       coachHidePocket = true; coachHideDrug = false; coachBlinkDrug = true; coachMagnet = false;
       coachTrack = null;
       flightTo(drugCenter, 1.7, 800, {face:true});
-      coachBubble('🔑',
-        `Вот <b>твоё лекарство</b> — крошечная молекула-ключ (голубая, мигает). Именно им ты ` +
-        `будешь действовать: подводить и вставлять в белок.`, true);
       break;
     case 2:   // ---- the pocket: it's on the far side, so TURN the protein to face it ----
       coachHidePocket = false; coachHideDrug = false; coachBlinkDrug = false; coachMagnet = false;
       coachTrack = null;
       flightTo(()=>pocket, 1.9, 800, {face:true});
-      coachBubble('🎯',
-        `А это <b>карман</b> — уязвимое место белка, его «выключатель» (зелёная метка). ` +
-        `Мы повернули клетку к нему. Цель — вставить ключ точно сюда.`, true);
       break;
     case 3: {  // ---- guide along the magnetic track: show both ends, tilted so the pocket is clear ----
       coachHidePocket = false; coachHideDrug = false; coachBlinkDrug = true; coachMagnet = true;
@@ -152,9 +162,6 @@ function coachGoto(n){
         viewer.zoom(1.05);
         recenter(mid);
       }), 900);
-      coachBubble('🖱',
-        `Схвати лекарство мышью и <b>веди по светящейся дорожке</b> прямо в карман. ` +
-        `Не бойся промахнуться — сейчас ключ сам держится трека.`, false);
       break;
     }
     case 4:   // ---- rotate to seat (reference ghost blinks) ----
@@ -165,26 +172,23 @@ function coachGoto(n){
       // zoom into the pocket, keeping step 3's turned/tilted orientation; the tween goes straight
       // there so there's no jarring pull-back to the whole protein.
       tweenView(captureTarget(()=>{ viewer.zoomTo({}); viewer.zoom(1.7); recenter(pocket); }), 700);
-      coachBubble('🔄',
-        `Ты у кармана! Теперь <b>поверни</b> лекарство (<span class="hlc">правый клик + мышь</span>) ` +
-        `и подведи вплотную, чтобы оно легло как <b>моргающий эталон</b>. Когда сядет плотно — появится кнопка «Тест».`, false);
       break;
     case 5:   // ---- press TEST ----
       coachBlinkDrug = false; coachMagnet = false; coachTrack = null;
       el('btnDock').classList.add('pulse');
-      coachBubble('✅',
-        `Отлично, ключ сел плотно! Жми пульсирующую кнопку <b>«▶ ТЕСТ ЛЕКАРСТВА»</b> справа — ` +
-        `проверим, насколько крепко он держится.`, false);
       // pre-render the next target's 3D preview so the success modal can show it instantly
       { const nxt = LEVELS[LEVEL_IDX+1]; if(nxt) renderLevelPreview(nxt.pdb); }
       break;
   }
+  coachRefreshBubble();   // the line's text comes from the COACH_BUBBLES table
 }
 
-/* ---------- per-frame hook (called from scene.js draw) ----------
-   Draws the glowing track + positions the "grab here" cursor, then checks the auto-advance
-   conditions for the hands-on steps. */
-function coachRender(world, center, mind, fit){
+/* ---------- per-frame hook (called from draw in scene.js) ----------
+   Drawing only: the glowing track + the position of the "grab here" cursor.
+   The auto-advance check (coachTick) is called from draw() SEPARATELY and
+   earlier, because it has to run every tick even when the frame is not
+   redrawn (dirty-render, see scene.js). */
+function coachShapes(world, center){
   // glowing dotted track the player should follow (steps that set coachTrack)
   if(coachTrack){
     const a = coachTrack.a, b = coachTrack.b, N = 14;
@@ -202,12 +206,11 @@ function coachRender(world, center, mind, fit){
     const r = el('viewer').getBoundingClientRect();
     cur.style.left = (r.left + s.x) + 'px';
     cur.style.top  = (r.top  + s.y) + 'px';
-    cur.querySelector('.cc-tip').textContent = 'схвати и веди в карман';
+    cur.querySelector('.cc-tip').textContent = t(IS_TOUCH ? 'coach.cursor.touch' : 'coach.cursor.mouse');
     cur.style.display = 'block';
   } else {
     cur.style.display = 'none';
   }
-  coachTick(mind, fit);
 }
 // auto-advance for the hands-on steps
 function coachTick(mind, fit){
@@ -224,7 +227,7 @@ function startCoach(){
   // reset the drug to its starting spot, clear any hint / score
   lig.x = pocket.x+26; lig.y = pocket.y+14; lig.z = pocket.z+22; lig.rx=lig.ry=lig.rz=0;
   solutionPose = null; showSolution = false; syncSolveBtn();
-  score = 0; el('scoreVal').textContent = '0';
+  setScore(0);
   el('btnDock').classList.remove('pulse');
   document.body.classList.add('coaching');   // hide meter / controls hint / action menu (see css)
   camInteracting = false;                     // clear any stale flag so the first flight runs
@@ -236,7 +239,7 @@ function endCoach(){
   coachActive = false; coachStep = -1;
   coachHidePocket = coachHideDrug = coachBlinkDrug = coachMagnet = false;
   coachTrack = null;
-  document.body.classList.remove('coaching', 'coach-actions');
+  document.body.classList.remove('coaching', 'coach-actions', 'coach-modes');
   el('btnDock').classList.remove('pulse');
   el('coach').classList.remove('show');
   el('coachCursor').style.display = 'none';
@@ -251,18 +254,15 @@ function coachSuccess(affinity){
   coachNextIdx = nxt ? LEVEL_IDX+1 : -1;
   endCoach();   // stop coaching; the modal takes over
 
-  el('coachDoneTitle').textContent = 'МИШЕНЬ ПРОЙДЕНА!';
+  el('coachDoneTitle').textContent = t('done.title');
+  const common = {name: levelName(done), aff: affinity.toFixed(1), unit: t('unit.kcal')};
   if(nxt){
-    el('coachDoneBody').innerHTML =
-      `Ты подобрал лекарство к <b>${done.name}</b> — энергия связывания ${affinity.toFixed(1)} ккал/моль.<br><br>` +
-      `Дальше — уровень <b>${nxt.name}</b>. Теперь ты играешь <b>сам</b>: без подсказок и ` +
-      `«примагничивания» — покажем только моргающее лекарство в кармане (цель, куда нужно дойти).`;
-    el('coachDoneGo').textContent = 'Уровень ' + (LEVEL_IDX+2) + ' ▶';
+    el('coachDoneBody').innerHTML = t('done.body.next',
+      Object.assign({next: levelName(nxt)}, common));
+    el('coachDoneGo').textContent = t('done.go.next', {n: LEVEL_IDX+2});
   } else {
-    el('coachDoneBody').innerHTML =
-      `Ты подобрал лекарство к <b>${done.name}</b> — энергия связывания ${affinity.toFixed(1)} ккал/моль.<br><br>` +
-      `Это была последняя мишень. Выбери следующую в меню уровней.`;
-    el('coachDoneGo').textContent = '🗂 К уровням';
+    el('coachDoneBody').innerHTML = t('done.body.last', common);
+    el('coachDoneGo').textContent = t('done.go.levels');
   }
 
   // preview slot: spinner while the next target renders (kicked off in step 5), image when ready
@@ -299,7 +299,11 @@ function renderLevelPreview(pdb){
     }
     host.innerHTML = '';
     let v;
-    try{ v = $3Dmol.createViewer(host, {backgroundColor:0x0a0e22}); }
+    // the preview is a 480×340 PNG, ribbon quality does not matter here,
+    // and on a phone this viewer is alive alongside the main one
+    try{ v = $3Dmol.createViewer(host, qLow()
+      ? {backgroundColor:0x0a0e22, cartoonQuality:3, antialias:false}
+      : {backgroundColor:0x0a0e22}); }
     catch(e){ resolve(null); return; }
     let done = false;
     const finish = val => { if(done) return; done = true; resolve(val); };
@@ -310,7 +314,7 @@ function renderLevelPreview(pdb){
         v.setStyle({}, {cartoon:{color:'spectrum'}});
         v.setStyle({hetflag:true}, {sphere:{scale:0.4, color:'magenta'}});
         v.setStyle({resn:['HOH','WAT']}, {});
-        v.addSurface($3Dmol.SurfaceType.VDW, {opacity:0.5, colorscheme:'cyanCarbon'}, {hetflag:false});
+        if(!qLow()) v.addSurface($3Dmol.SurfaceType.VDW, {opacity:0.5, colorscheme:'cyanCarbon'}, {hetflag:false});
         v.zoomTo(); v.zoom(0.95); v.render();
         // the VDW surface builds asynchronously — give it a beat before snapshotting
         setTimeout(()=>{ let uri=null; try{ uri = v.pngURI(); }catch(e){} clearTimeout(to); finish(uri||null); }, 700);
@@ -325,7 +329,7 @@ function renderLevelPreview(pdb){
 el('coachNext').onclick = ()=>{ if(coachStep<3) coachGoto(coachStep+1); };
 el('coachSkip').onclick = endCoach;
 el('btnCoach').onclick   = ()=>{
-  if(!pocket){ showToast('Сначала выбери мишень — 🗂 УРОВНИ'); return; }
+  if(!pocket){ showToast(t('toast.pickFirst')); return; }
   if(infoMode) setInfoMode(false);
   startCoach();
 };

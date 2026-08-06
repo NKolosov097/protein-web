@@ -41,13 +41,22 @@ const LIG_LOCAL = [
 let score = 0, best = 0, breath = 0;
 
 // current level + docking target (set on load)
-let LEVEL = null, LEVEL_IDX = 0, gen = 0, POCKET_LABEL = 'КАРМАН';
-let HOTSPOTS = {};   // per-level cancer-mutation hotspots (set on load)
+// POCKET_LABEL starts empty on purpose: the translated default comes from the
+// dictionaries via levelPocketLabel(), and i18n.js is not loaded yet at this point.
+let LEVEL = null, LEVEL_IDX = 0, gen = 0, POCKET_LABEL = '';
+// residue numbers that have a cancer-mutation hint (the texts live in the dictionaries)
+let HOTSPOTS = [];
 // "ding" on entering the pocket — fires once per boundary crossing (see zoneSound)
 let wasInPocket = false;
 // true while the CAMERA is being moved (orbit / pan). The animation loop freezes the
 // gameplay redraw during this time so it doesn't fight 3Dmol's own render — see animate().
 let camInteracting = false;
+// the molecule is being dragged with a finger in "depth" mode (see touchMode in controls.js).
+// Lives here because it is read both in scene.js (pocketAnimates) and in controls.js.
+let depthLig = false;
+// what a single finger dragged ACROSS THE MOLECULE does (the #modeBar switcher).
+// Written in mobile.js, read in controls.js.
+let touchMode = 'move';   // 'move' | 'rotate' | 'depth'
 
 // ---- guided tutorial ("coach") state (see js/coach.js) ----
 // A step-driven, in-scene onboarding that flies the camera, blinks objects, draws a magnetic

@@ -29,8 +29,8 @@ function recordResult(aff, mind){
   if(newlySolved){
     const next = LEVELS[LEVEL_IDX+1];
     // open levels are already available from the start, so only announce a genuine unlock
-    const msg = (next && !next.open) ? ('✔ Мишень пройдена! Открыт уровень: ' + next.name)
-                                     : '✔ Мишень пройдена! 🎉';
+    const msg = (next && !next.open) ? t('lv.clearedNext', {name: levelName(next)})
+                                     : t('lv.cleared');
     setTimeout(()=>showToast(msg, 3200), 700);
   }
 }
@@ -39,25 +39,25 @@ function renderLevels(){
   const prog = getProg();
   el('levelGrid').innerHTML = LEVELS.map((L,i)=>{
     const pr = prog[L.id] || {}, unlocked = isUnlocked(i, prog);
-    const bestTxt = pr.best!=null ? pr.best.toFixed(1)+' ккал/моль' : null;
+    const bestTxt = pr.best!=null ? pr.best.toFixed(1)+' '+t('unit.kcal') : null;
     let cls, badge, foot;
     if(!unlocked){
       cls='lv-lock'; badge='🔒';
-      foot = LEVELS[i-1] && LEVELS[i-1].open ? 'сначала попробуй предыдущую' : 'сначала пройди предыдущую мишень';
+      foot = LEVELS[i-1] && LEVELS[i-1].open ? t('lv.lockedPrevOpen') : t('lv.locked');
     } else if(L.open){
       cls='lv-open'; badge='🔬';
-      foot = bestTxt ? ('твой лучший: '+bestTxt) : 'лекарства ещё нет — попробуй первым!';
+      foot = bestTxt ? t('lv.openBest', {v:bestTxt}) : t('lv.openNone');
     } else if(pr.solved){
       cls='lv-done'; badge='✔';
-      foot = 'ПРОЙДЕНО · лучшее: ' + (bestTxt||'—');
+      foot = t('lv.solved', {v: bestTxt || '—'});
     } else {
       cls='lv-todo'; badge='▶';
-      foot = bestTxt ? ('попытка: '+bestTxt+' — дожми до кармана') : 'доступно — вперёд!';
+      foot = bestTxt ? t('lv.todoBest', {v:bestTxt}) : t('lv.todoNone');
     }
-    const tag = L.open ? 'ОТКРЫТАЯ ЗАДАЧА' : (L.drug || '');
-    return `<div class="lvCard ${cls}" data-i="${i}" title="${L.blurb.replace(/"/g,'&quot;')}">
-      <div class="lvTop"><span class="lvNum">УРОВЕНЬ ${i+1}</span><span class="lvBadge">${badge}</span></div>
-      <div class="lvName">${L.name}</div>
+    const tag = L.open ? t('lv.tagOpen') : levelDrug(L);
+    return `<div class="lvCard ${cls}" data-i="${i}" title="${levelBlurb(L).replace(/"/g,'&quot;')}">
+      <div class="lvTop"><span class="lvNum">${t('lv.num',{n:i+1})}</span><span class="lvBadge">${badge}</span></div>
+      <div class="lvName">${levelName(L)}</div>
       <div class="lvTag">${tag}</div>
       <div class="lvFoot">${foot}</div>
     </div>`;
@@ -66,7 +66,7 @@ function renderLevels(){
     const i = +c.dataset.i;
     c.onclick = isUnlocked(i, getProg())
       ? ()=>loadLevel(i)
-      : ()=>showToast('🔒 Сначала разберись с предыдущей мишенью');
+      : ()=>showToast(t('lv.lockedToast'));
   });
 }
 function openLevels(){ renderLevels(); el('levels').classList.add('show'); }
@@ -74,5 +74,5 @@ function closeLevels(){ el('levels').classList.remove('show'); }
 el('btnLevels').onclick   = ()=> openLevels();
 el('levelsClose').onclick = ()=>{
   closeLevels();                       // the ✕ always closes the picker
-  if(!LEVEL) showToast('Открой 🗂 УРОВНИ, когда будешь готов выбрать мишень', 2600);
+  if(!LEVEL) showToast(t('lv.pickToast'), 2600);
 };

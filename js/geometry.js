@@ -87,6 +87,19 @@ function poseWorld(pose){
   });
 }
 
+// Closest point on the segment a→b to p, clamped to its ends. Used by the coach's
+// magnetic track (coachTrack): the molecule's centroid is pulled onto the straight
+// "start → pocket" line so a first-timer cannot lose the key in space, while still
+// deciding for themselves how far along the track it has travelled.
+function projectOnSegment(p, a, b){
+  const vx=b.x-a.x, vy=b.y-a.y, vz=b.z-a.z;
+  const len2 = vx*vx+vy*vy+vz*vz;
+  if(!len2) return {x:a.x, y:a.y, z:a.z};                 // degenerate segment
+  let t = ((p.x-a.x)*vx + (p.y-a.y)*vy + (p.z-a.z)*vz)/len2;
+  t = Math.max(0, Math.min(1, t));
+  return {x:a.x+vx*t, y:a.y+vy*t, z:a.z+vz*t};
+}
+
 // evenly thin an array down to at most `cap` items (for cheap O(n²) geometry scans)
 function downsample(arr, cap){
   if(arr.length<=cap) return arr;

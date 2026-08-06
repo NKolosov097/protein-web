@@ -14,7 +14,7 @@ const COMMON_HET = new Set(('HOH WAT GDP GTP GNP GSP GCP GPP GDP MG MN NA CL K C
 function findPocket(atoms){
   const U = s => (s||'').toUpperCase();
   const strat = (LEVEL && LEVEL.pocket) || {type:'auto'};
-  const label = strat.label || 'КАРМАН';
+  const label = levelPocketLabel(LEVEL);   // the text lives in the dictionaries, see js/i18n.js
 
   if(strat.type==='elem'){
     const a = atoms.find(x => U(x.elem)===strat.value || U(x.resn)===strat.value);
@@ -140,17 +140,16 @@ function solveBestPose(){
 function quality(fit){
   const {centerDist, clash, affinity} = fit;
   // ---- phase 1: still bringing the key toward the pocket ----
-  if(centerDist>20) return {color:'#ff2e5b', status:'ДАЛЕКО',       pct:6,  hint:'🔑 тащи молекулу мышью к зелёному карману'};
-  if(centerDist>10) return {color:'#ff8a1e', status:'ПОДБИРАЕМСЯ…', pct:26, hint:'ещё ближе к «выключателю» — тащи мышью'};
-  if(centerDist>5)  return {color:'#ffb000', status:'БЛИЗКО',       pct:44, hint:'почти в скважине — доведи вплотную к зелёной метке'};
+  // device-neutral wording: the same hint is true for a mouse and for a finger
+  // (on a phone "right click" and "mouse" simply do not exist)
+  if(centerDist>20) return {color:'#ff2e5b', status:t('q.far'),    pct:6,  hint:t('q.far.hint')};
+  if(centerDist>10) return {color:'#ff8a1e', status:t('q.closer'), pct:26, hint:t('q.closer.hint')};
+  if(centerDist>5)  return {color:'#ffb000', status:t('q.close'),  pct:44, hint:t('q.close.hint')};
   // ---- phase 2: in the pocket → orientation / seating now drives the score ----
   // seating quality from the binding energy: -3 (loose) … -12 (tight)
   const q = Math.max(0, Math.min(1, (-affinity-3)/9));
   const pct = Math.round(55 + q*45);
-  if(clash>1.2) return {color:'#ffb000', status:'УПИРАЕТСЯ', pct:Math.min(pct,62),
-    hint:'молекула сталкивается с белком — правый клик + мышь, поверни, чтобы легла плотнее'};
-  if(q>0.75)    return {color:'#39ff14', status:'★ ПЛОТНО СЕЛ!', pct:100,
-    hint:'✅ отличная посадка! жми «ТЕСТ ЛЕКАРСТВА»'};
-  return          {color:'#ffe600', status:'В КАРМАНЕ', pct,
-    hint:'поворачивай (правый клик + мышь) — ищи угол, где ключ ляжет плотнее'};
+  if(clash>1.2) return {color:'#ffb000', status:t('q.clash'),  pct:Math.min(pct,62), hint:t('q.clash.hint')};
+  if(q>0.75)    return {color:'#39ff14', status:t('q.seated'), pct:100,              hint:t('q.seated.hint')};
+  return          {color:'#ffe600', status:t('q.inPocket'), pct,                     hint:t('q.inPocket.hint')};
 }

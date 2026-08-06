@@ -6,16 +6,16 @@
 
 /* ---------- "SHOW SOLUTION" hint: a blinking ghost of the ideal pose ---------- */
 function syncSolveBtn(){
-  el('btnSolve').textContent = showSolution ? '💡 ПОДСКАЗКА: ВКЛ' : '💡 ПОДСКАЗКА';
+  el('btnSolve').textContent = showSolution ? t('btn.solve.on') : t('btn.solve');
   el('btnSolve').classList.toggle('b-dock', showSolution);
   el('btnSolve').classList.toggle('b-ghost', !showSolution);
 }
 el('btnSolve').onclick = ()=>{
-  if(!pocket){ showToast('Сначала выбери мишень — 🗂 УРОВНИ'); return; }
+  if(!pocket){ showToast(t('toast.pickFirst')); return; }
   showSolution = !showSolution;
   if(showSolution){
     if(!solutionPose) solutionPose = solveBestPose();   // compute once per level, then cache
-    showToast('💡 Полупрозрачная мигающая молекула — идеальное положение. Повтори её позу и поворот своим лекарством.', 4200);
+    showToast(t('toast.hint'), 4200);
   }
   syncSolveBtn();
 };
@@ -30,10 +30,10 @@ const API = 'http://localhost:8000/dock';
 const engine = 'learn';
 
 el('btnDock').onclick = async ()=>{
-  if(!pocket){ showToast('Сначала выбери мишень — 🗂 УРОВНИ'); return; }
+  if(!pocket){ showToast(t('toast.pickFirst')); return; }
   const {mind, world} = minDistance(0);
   const btn=el('btnDock'), old=btn.textContent;
-  btn.disabled=true; btn.textContent='⏳ СЧИТАЕМ…';
+  btn.disabled=true; btn.textContent=t('btn.dock.busy');
 
   let affinity, source;
   if(engine==='vina'){
@@ -53,18 +53,17 @@ el('btnDock').onclick = async ()=>{
       source = 'AutoDock Vina';
     }catch(e){
       affinity = fitEnergy(world).affinity;   // Vina unavailable → learning model, and say so
-      source = 'обучающая модель (Vina недоступна)';
-      showToast('⚠ Vina недоступна ('+(e.message||'нет связи с сервером')+') — считаю обучающей моделью', 3800);
+      source = t('engine.learnFallback');
+      showToast(t('toast.vinaDown', {err: e.message || t('engine.noServer')}), 3800);
     }
   } else {
     affinity = fitEnergy(world).affinity;      // learning mode: instant, in-browser
-    source = 'обучающая модель';
+    source = t('engine.learn');
   }
   const pts = Math.round(-affinity*1000);
   btn.disabled=false; btn.textContent=old;
 
-  score = pts;
-  el('scoreVal').textContent = score.toLocaleString('ru-RU');
+  setScore(pts);
 
   // record per-level progress (attempt / best affinity / solved + unlock next)
   recordResult(affinity, mind);
@@ -73,7 +72,7 @@ el('btnDock').onclick = async ()=>{
   // win — celebrate, then show the "level cleared" modal with a preview of the next target.
   if(coachActive && coachStep===5 && mind<=5){
     fireworks(); chimeWin();
-    if(pts>best){ best=pts; el('best').textContent='РЕКОРД: '+best.toLocaleString('ru-RU'); saveScore(pts); }
+    if(pts>best){ setBest(pts); saveScore(pts); }
     coachSuccess(affinity);
     return;
   }
@@ -83,27 +82,42 @@ el('btnDock').onclick = async ()=>{
 
   let msg;
   if(pts>best){
-    best=pts; el('best').textContent='РЕКОРД: '+best.toLocaleString('ru-RU');
+    setBest(pts);
     fireworks(); chimeWin();
-    msg = `★ РЕКОРД!  ${affinity.toFixed(1)} ккал/моль · ${source}`;
+    msg = t('toast.record', {aff: affinity.toFixed(1), unit: t('unit.kcal'), src: source});
     saveScore(pts);
   } else {
-    msg = `${affinity.toFixed(1)} ккал/моль · ${pts.toLocaleString('ru-RU')} очков · ${source}`;
+    msg = t('toast.result', {aff: affinity.toFixed(1), unit: t('unit.kcal'),
+                             pts: numFmt(pts), src: source});
   }
 
   if(firstTest){
     localStorage.setItem('pd_score_seen','1');
-    showToast(`${affinity.toFixed(1)} ккал/моль — это сила «прилипания» ключа. Чем больше минус, тем крепче держится и тем больше очков! (${pts.toLocaleString('ru-RU')})`, 4600);
+    showToast(t('toast.firstTest', {aff: affinity.toFixed(1), unit: t('unit.kcal'),
+                                    pts: numFmt(pts)}), 4600);
   } else {
     showToast(msg);
   }
 };
 
 el('btnReset').onclick = ()=>{
-  if(!pocket){ showToast('Сначала выбери мишень — 🗂 УРОВНИ'); return; }
+  if(!pocket){ showToast(t('toast.pickFirst')); return; }
   lig.x=pocket.x+26; lig.y=pocket.y+14; lig.z=pocket.z+22;
-  lig.rx=lig.ry=lig.rz=0; score=0; el('scoreVal').textContent='0';
+  lig.rx=lig.ry=lig.rz=0; setScore(0);
 };
+
+/* ---------- score: a single write point ----------
+   On mobile the #score panel is hidden and the score + record are shown as the
+   #hdrScore line in the header, so writing to the DOM directly is no longer OK. */
+function syncScore(){
+  el('scoreVal').textContent = numFmt(score);
+  el('best').textContent = t('score.best', {n: numFmt(best)});
+  const h = el('hdrScore');
+  if(h) h.textContent = t('score.line', {s: numFmt(score), b: numFmt(best)});
+}
+function setScore(n){ score = n; syncScore(); }
+function setBest(n){ best = n; syncScore(); }
+syncScore();   // fill the header line on load: on mobile it is the only score readout
 
 /* ---------- toast + fireworks ---------- */
 function showToast(msg, ms=1800){
@@ -157,7 +171,7 @@ el('btnSound').onclick = ()=>{
   soundOn=!soundOn; initAudio();
   el('btnSound').textContent = soundOn ? '🔊' : '🔇';
   el('btnSound').classList.toggle('on', soundOn);
-  el('btnSound').title = soundOn ? 'Звук: вкл' : 'Звук: выкл';
+  el('btnSound').title = soundOn ? t('btn.sound.on') : t('btn.sound.off');
 };
 // unlock audio on first click (browser autoplay policy)
 window.addEventListener('click', initAudio, {once:true});
@@ -165,8 +179,8 @@ window.addEventListener('click', initAudio, {once:true});
 /* ---------- local leaderboard (mini Stage 4) ---------- */
 function getBoard(){ try{return JSON.parse(localStorage.getItem('pd_board')||'[]')}catch{return[]} }
 function saveScore(pts){
-  let name = prompt('РЕКОРД! Введите ник для таблицы лидеров:', 'ИГРОК');
-  if(!name) name='ИГРОК';
+  let name = prompt(t('prompt.record'), t('prompt.defaultName'));
+  if(!name) name=t('prompt.defaultName');
   const b=getBoard(); b.push({name:name.slice(0,10), pts});
   b.sort((a,z)=>z.pts-a.pts); localStorage.setItem('pd_board', JSON.stringify(b.slice(0,5)));
   loadLeaderboard();
@@ -175,7 +189,6 @@ function loadLeaderboard(){
   const b=getBoard();
   if(!b.length){ el('lb').style.display='none'; return; }
   el('lb').style.display='block';
-  el('lbList').innerHTML = b.map(r=>`<li>${r.name}<span>${r.pts.toLocaleString('ru-RU')}</span></li>`).join('');
-  best = Math.max(best, b[0].pts);
-  el('best').textContent='РЕКОРД: '+best.toLocaleString('ru-RU');
+  el('lbList').innerHTML = b.map(r=>`<li>${r.name}<span>${numFmt(r.pts)}</span></li>`).join('');
+  setBest(Math.max(best, b[0].pts));
 }

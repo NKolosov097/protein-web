@@ -6,6 +6,14 @@ A browser game featuring **real cancer-target proteins** (loaded live from the P
 in 3D. You steer a small drug-like molecule toward each protein's functional pocket; the game
 measures the contact, awards points, and celebrates with sound and fireworks.
 
+The interface is **bilingual — English / Русский**. Switch any time with the **🌐** button in the
+header; the choice is remembered. On a first visit the language follows your browser (a `ru`
+prefix gives Russian, everything else falls back to English).
+
+It also **plays on a phone**. One finger on the molecule performs whatever mode is selected in the
+bottom bar — **✋ ДВИГАТЬ / 🔄 ВРАЩАТЬ / ↕ ГЛУБИНА** (move / rotate / depth); one finger on the
+background spins the structure; two fingers zoom. The rest of the buttons live behind **☰**.
+
 ## Levels (🗂 УРОВНИ)
 
 Six real targets. Pick one from the **🗂 УРОВНИ** screen; each solved *druggable* target gets a
@@ -26,12 +34,23 @@ The docking pocket is found automatically per level: an explicit ion (p53's zinc
 largest **bound ligand** in the crystal — i.e. the *actual real drug* — skipping common
 cofactors/ions (GDP, Mg²⁺, water…). For the open targets, which carry no drug, the pocket
 falls back to the protein's centre / nucleotide site. To add or change a level, edit the
-`LEVELS` array near the top of the `<script>` in `index.html` (just a 4-letter PDB code).
+`LEVELS` array in `js/levels-data.js` (usually just a 4-letter PDB code) — it holds the structure
+only; the level's name, subtitle and description go into both dictionaries (`js/lang-en.js` and
+`js/lang-ru.js`) under `levels.<id>.*`.
 
 ## Running it (Stages 1 & 2 — ready to play)
 
 Just open `index.html` with a double-click in your browser (Chrome/Edge).
 An internet connection is required: 3Dmol.js and the 1TUP structure are loaded from the network.
+
+Two things worth knowing:
+
+- **`index.html?selftest`** runs the built-in self-check of the pure functions and of the two
+  dictionaries, and prints the result in the browser console. There is no test runner in this
+  project, so this is what to run after touching that logic.
+- **⚙ ГРАФИКА** cycles the graphics profile — *auto / light / pretty*. On a phone or a weak GPU
+  the light profile caps the pixel ratio, coarsens the ribbons and draws the translucent surface
+  only around the pocket, which is what keeps rotation smooth. The choice is remembered.
 
 ### Controls
 | Action | Keys |
