@@ -181,10 +181,12 @@ function coachGoto(n){
   }
 }
 
-/* ---------- per-frame hook (called from scene.js draw) ----------
-   Draws the glowing track + positions the "grab here" cursor, then checks the auto-advance
-   conditions for the hands-on steps. */
-function coachRender(world, center, mind, fit){
+/* ---------- per-frame hook (вызывается из draw в scene.js) ----------
+   Только рисование: светящаяся дорожка + позиция курсора «схвати здесь».
+   Проверка автопереходов (coachTick) вызывается из draw() ОТДЕЛЬНО и
+   раньше, потому что она должна идти каждый тик, даже когда кадр не
+   перерисовывается (dirty-render, см. scene.js). */
+function coachShapes(world, center){
   // glowing dotted track the player should follow (steps that set coachTrack)
   if(coachTrack){
     const a = coachTrack.a, b = coachTrack.b, N = 14;
@@ -207,7 +209,6 @@ function coachRender(world, center, mind, fit){
   } else {
     cur.style.display = 'none';
   }
-  coachTick(mind, fit);
 }
 // auto-advance for the hands-on steps
 function coachTick(mind, fit){
@@ -299,7 +300,11 @@ function renderLevelPreview(pdb){
     }
     host.innerHTML = '';
     let v;
-    try{ v = $3Dmol.createViewer(host, {backgroundColor:0x0a0e22}); }
+    // превью — картинка 480×340 в PNG, качество ленты здесь не важно,
+    // а на телефоне этот вьюер живёт одновременно с основным
+    try{ v = $3Dmol.createViewer(host, qLow()
+      ? {backgroundColor:0x0a0e22, cartoonQuality:3, antialias:false}
+      : {backgroundColor:0x0a0e22}); }
     catch(e){ resolve(null); return; }
     let done = false;
     const finish = val => { if(done) return; done = true; resolve(val); };
@@ -310,7 +315,7 @@ function renderLevelPreview(pdb){
         v.setStyle({}, {cartoon:{color:'spectrum'}});
         v.setStyle({hetflag:true}, {sphere:{scale:0.4, color:'magenta'}});
         v.setStyle({resn:['HOH','WAT']}, {});
-        v.addSurface($3Dmol.SurfaceType.VDW, {opacity:0.5, colorscheme:'cyanCarbon'}, {hetflag:false});
+        if(!qLow()) v.addSurface($3Dmol.SurfaceType.VDW, {opacity:0.5, colorscheme:'cyanCarbon'}, {hetflag:false});
         v.zoomTo(); v.zoom(0.95); v.render();
         // the VDW surface builds asynchronously — give it a beat before snapshotting
         setTimeout(()=>{ let uri=null; try{ uri = v.pngURI(); }catch(e){} clearTimeout(to); finish(uri||null); }, 700);

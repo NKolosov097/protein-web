@@ -6,7 +6,9 @@
 
 /* ---------- 3Dmol init ---------- */
 function init(){
-  viewer = $3Dmol.createViewer("viewer", { backgroundColor:0x05060f });
+  // опции берём из профиля качества (js/perf.js): на 'low' — грубее
+  // ленты и без сглаживания, плюс там же ограничен devicePixelRatio
+  viewer = $3Dmol.createViewer("viewer", viewerOptions());
   el('load').style.display='none';     // nothing is loading until a level is picked
   loadLeaderboard();
   // jump straight into a level (last played, or level 1 if none was ever chosen). Onboarding is
@@ -35,6 +37,7 @@ function loadLevel(i){
   try{ viewer.removeAllSurfaces(); }catch(e){}
   viewer.removeAllShapes(); viewer.removeAllLabels(); resetLabels();
   proteinAtoms = []; hoverAtoms = []; pocket = null; wasInPocket = false;
+  resetDrawState();                    // новая сцена → первый кадр обязан перерисоваться
   solutionPose = null; showSolution = false; syncSolveBtn();   // drop any hint from the previous level
 
   // HUD / title reflect the current target
@@ -179,6 +182,39 @@ function syncLabels(){
 // forget cached labels after they are wiped externally (e.g. study mode clears all labels)
 function resetLabels(){ targetLabel=null; ligLabel=null; lastLigLabelPos=''; }
 
+/* ---------- какие кадры «живые» ---------- */
+// игрок держит палец/кнопку на сцене (камера или молекула)
+function userBusy(){ return camInteracting || draggingLig || rotatingLig || depthLig; }
+// пульсирует ли маркер кармана. На 'low' пульс идёт только пока игрок
+// что-то делает: иначе неподвижная сцена никогда не станет «чистой»
+// и рендеры будут идти в покое, греша батарею.
+function pocketAnimates(){ return !coachHidePocket && (!qLow() || userBusy()); }
+
+// подпись кадра: если она не изменилась и ничего не анимируется — шейпы
+// пересобирать не нужно, старые остаются на месте и корректно вращаются
+// вместе со сценой силами самого 3Dmol.
+let lastDrawKey = null;
+function drawKey(inPocket){
+  return [lig.x.toFixed(3), lig.y.toFixed(3), lig.z.toFixed(3),
+          lig.rx.toFixed(3), lig.ry.toFixed(3), lig.rz.toFixed(3),
+          coachHidePocket?1:0, coachHideDrug?1:0, coachBlinkDrug?1:0,
+          showSolution?1:0, coachTrack?1:0, inPocket?1:0].join('|');
+}
+// вызвать, когда сцена пересобрана извне (новый уровень, смена языка,
+// выход из режима изучения) — следующий draw() обязательно перерисует
+function resetDrawState(){ lastDrawKey = null; }
+
+/* ---------- HUD (дёшево, обновляется каждый тик) ---------- */
+function updateMeter(q, mind){
+  el('barFill').style.width = q.pct+'%';
+  el('barFill').style.background = q.color;
+  el('barFill').style.boxShadow = '0 0 14px '+q.color;
+  el('status').textContent = q.status;
+  el('status').style.color = q.color;
+  el('hint').textContent = q.hint;
+  el('distVal').textContent = mind<900 ? mind.toFixed(2) : '—';
+}
+
 /* ---------- draw ligand + force lines ---------- */
 function draw(t=0){
   // STUDY MODE: the study code manages highlights (setStyle) and its own HTML tooltip,
@@ -186,14 +222,26 @@ function draw(t=0){
   // re-render of the heavy stick view, no ligand shapes).
   if(infoMode) return;
 
+  // ---- дешёвая часть: идёт КАЖДЫЙ тик ----
+  const {mind, world, center} = minDistance(t);
+  const fit = fitEnergy(world);
+  const q = quality(fit);
+  const inPocket = mind <= 5;
+  updateMeter(q, mind);
+  zoneSound(mind);                       // «дзинь» на входе в карман
+  if(coachActive) coachTick(mind, fit);  // автопереходы обучения — до гейта, они меняют флаги
+
+  // ---- гейт: пересобирать шейпы только если кадр реально изменился ----
+  const animating = pocketAnimates() || showSolution || coachBlinkDrug || !!coachTrack;
+  const key = drawKey(inPocket);
+  const dirty = animating || key !== lastDrawKey;
+  lastDrawKey = key;
+  if(!dirty) return mind;
+
   viewer.removeAllShapes();
   // NOTE: labels are NOT cleared here — they are managed by syncLabels() below so they
   // are not destroyed/recreated every frame (that caused the labels to flicker/"jump").
-
-  const {mind, world, center} = minDistance(t);
-  const fit = fitEnergy(world);
-  const {color, status, pct, hint} = quality(fit);
-  const inPocket = mind <= 5;
+  const {color} = q;
 
   // ---- TARGET MARKER: pulsing pocket (zinc site) ---- (coach may hide it early on)
   if(!coachHidePocket){
@@ -201,7 +249,10 @@ function draw(t=0){
     // ENVELOP the solution-ghost drug and wash it out (it reads as a dark blinking ball hiding the
     // hint). When the ghost is shown it already marks the spot, so shrink the halo to a small pip
     // that sits inside the empty benzene-ring centre instead of swallowing the whole molecule.
-    const pulse = showSolution ? 1.0 + 0.15*Math.sin(t*1.5) : 2.4 + 0.5*Math.sin(t*1.5);
+    // на 'low' в покое пульс замирает (см. pocketAnimates), иначе неподвижная
+    // сцена никогда не станет «чистой» и рендеры пойдут вхолостую
+    const ph = pocketAnimates() ? Math.sin(t*1.5) : 0;
+    const pulse = showSolution ? 1.0 + 0.15*ph : 2.4 + 0.5*ph;
     viewer.addSphere({center:pocket, radius:pulse, color:'#39ff14', opacity:0.22});
     if(!showSolution) viewer.addSphere({center:pocket, radius:0.9, color:'#39ff14', opacity:0.9});
     // arrow pointing INTO the pocket from "above" ON SCREEN — anchored to the camera's up
@@ -252,20 +303,9 @@ function draw(t=0){
     viewer.addCylinder({start:gw[0], end:gw[6], radius:0.16, color:'#39ff14', opacity:blink});
   }
 
-  // HUD
-  el('barFill').style.width = pct+'%';
-  el('barFill').style.background = color;
-  el('barFill').style.boxShadow = '0 0 14px '+color;
-  el('status').textContent = status;
-  el('status').style.color = color;
-  el('hint').textContent = hint;
-  el('distVal').textContent = mind<900 ? mind.toFixed(2) : '—';
-
-  // sound — a short pleasant blip only when entering the pocket (no drone)
-  zoneSound(mind);
-
-  // guided tutorial overlay: track + "grab here" cursor + auto-advance (adds shapes, so before render)
-  if(coachActive) coachRender(world, center, mind, fit);
+  // guided tutorial overlay: track + "grab here" cursor (adds shapes, so before render).
+  // Автопереходы (coachTick) уже вызваны выше, до гейта dirty-render.
+  if(coachActive) coachShapes(world, center);
 
   viewer.render();
   return mind;
@@ -288,7 +328,7 @@ function animate(myGen){
   if(myGen !== gen) return;
   requestAnimationFrame(ts=>{
     if(myGen !== gen) return;                 // level switched → let this loop die
-    if(ts - lastFrameTs >= 45){               // ~20 fps cap
+    if(ts - lastFrameTs >= (qLow() ? 80 : 45)){   // ~12 fps на 'low', ~20 fps на 'high'
       lastFrameTs = ts;
       if(!camInteracting){ breath += 0.06; draw(breath); }
     }
